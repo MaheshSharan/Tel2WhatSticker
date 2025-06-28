@@ -1,0 +1,181 @@
+# Telegram to WhatsApp Stickers Converter
+
+A Flutter mobile application that converts images and Telegram sticker packs to WhatsApp sticker format with direct integration to WhatsApp.
+
+## Features
+
+### Input Methods
+- Upload individual image files (PNG, JPG, JPEG, GIF, WebP)
+- Upload ZIP archives containing multiple images
+- Process Telegram sticker pack URLs
+
+### Image Processing
+- Automatic conversion to WhatsApp-compatible format
+- Resizing to optimal dimensions (512x512px maximum)
+- Compression to meet WhatsApp file size requirements
+- Support for both static and animated stickers
+
+### WhatsApp Integration
+- Direct "Add to WhatsApp" functionality
+- Automatic sticker pack validation
+- Seamless integration with WhatsApp application
+
+## Requirements
+
+### System Requirements
+- Android 5.0 (API level 21) or higher
+- WhatsApp installed on the device
+- Minimum 100MB free storage space
+
+### Development Requirements
+- Flutter SDK 3.x or higher
+- Dart SDK 3.x or higher
+- Android Studio or VS Code
+- Android SDK with API level 21+
+
+## Installation
+
+### For Users
+1. Download the APK from the releases section
+2. Enable installation from unknown sources in Android settings
+3. Install the APK file
+4. Launch the application
+
+### For Developers
+1. Clone the repository
+```bash
+git clone <repository-url>
+cd telegram_to_whatsapp_stickers
+```
+
+2. Install dependencies
+```bash
+flutter pub get
+```
+
+3. Run code generation
+```bash
+dart run build_runner build --delete-conflicting-outputs
+```
+
+4. Run the application
+```bash
+flutter run
+```
+
+## Usage
+
+### Basic Image Upload
+1. Open the application
+2. Select "Upload Images" tab
+3. Choose image files or drag and drop them
+4. Configure pack name and publisher
+5. Tap "Create Sticker Pack"
+6. Tap "Add to WhatsApp" when processing is complete
+
+### ZIP File Processing
+1. Select "Upload ZIP" tab
+2. Choose a ZIP file containing images
+3. The app will extract and validate images automatically
+4. Configure pack details and proceed as above
+
+### Telegram Sticker Pack Conversion
+1. Select "Telegram URL" tab
+2. Paste a Telegram sticker pack URL (t.me/addstickers/...)
+3. Enter pack name and publisher information
+4. Process and add to WhatsApp
+
+## Supported Formats
+
+### Input Formats
+- PNG (recommended)
+- JPG/JPEG
+- WebP
+- GIF (converted to static)
+- BMP
+
+### Output Format
+- WebP (WhatsApp standard)
+- Automatic compression and resizing
+- Tray image generation (96x96px PNG)
+
+## Limitations
+
+- Maximum 30 stickers per pack (WhatsApp limitation)
+- Individual sticker file size limit: 500KB
+- Animated stickers are converted to static format
+- ZIP files larger than 50MB may cause performance issues
+
+## Technical Details
+
+### Architecture
+- Clean Architecture with BLoC pattern
+- Repository pattern for data layer
+- Dependency injection using GetIt
+- State management with flutter_bloc
+
+### Key Dependencies
+- flutter_bloc: State management
+- image: Image processing
+- archive: ZIP file handling
+- file_picker: File selection
+- path_provider: File system access
+- whatsapp_stickers_handler: WhatsApp integration
+
+## Troubleshooting
+
+### Common Issues
+
+**"WhatsApp not installed" error**
+- Ensure WhatsApp is installed and updated
+- Check that WhatsApp supports sticker packs
+
+**Images not processing**
+- Verify image formats are supported
+- Check that images are not corrupted
+- Ensure sufficient storage space
+
+**ZIP extraction fails**
+- Verify ZIP file is not corrupted
+- Check that ZIP contains supported image formats
+- Ensure ZIP file size is reasonable
+
+**App crashes during processing**
+- Close other apps to free memory
+- Try processing fewer images at once
+- Restart the application
+
+## Contributing
+
+### Development Setup
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests: `flutter test`
+5. Submit a pull request
+
+### Code Standards
+- Follow Dart/Flutter style guidelines
+- Use meaningful commit messages
+- Add tests for new features
+- Update documentation as needed
+
+## License
+
+This project is licensed under the MIT License. See the LICENSE file for details.
+
+## Support
+
+For issues and questions:
+- Create an issue on the GitHub repository
+- Provide detailed information about the problem
+- Include device information and error logs when applicable
+
+## Version History
+
+### v1.0.0
+- Initial release
+- Basic image upload and conversion
+- WhatsApp integration
+- ZIP file processing
+- Telegram URL support

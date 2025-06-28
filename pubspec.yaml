@@ -1,0 +1,79 @@
+name: telegram_to_whatsapp_stickers
+description: A professional Flutter app that converts Telegram stickers to WhatsApp format with direct integration.
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  
+  # State Management
+  flutter_bloc: ^8.1.3
+  bloc: ^8.1.2
+  equatable: ^2.0.5
+  
+  # Dependency Injection
+  get_it: ^7.6.4
+  injectable: ^2.3.2
+  
+  # Routing
+  go_router: ^12.1.1
+  
+  # Core Features
+  whatsapp_stickers_handler: ^0.5.0
+  image: ^4.5.3
+  flutter_image_compress: ^2.4.0
+  dio: ^5.3.2
+  path_provider: ^2.1.1
+  file_picker: ^10.2.0
+  archive: ^4.0.2
+  permission_handler: ^11.0.1
+  
+  # Utils
+  dartz: ^0.10.1
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.8.1
+  path: ^1.9.0
+  
+  # UI/UX
+  google_fonts: ^6.1.0
+  lottie: ^3.1.2
+  shimmer: ^3.0.0
+  cached_network_image: ^3.3.0
+  flutter_staggered_grid_view: ^0.7.0
+  
+  # Logging
+  logger: ^2.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.1
+  build_runner: ^2.4.7
+  injectable_generator: ^2.4.1
+  freezed: ^2.4.6
+  json_serializable: ^6.7.1
+  mockito: ^5.4.2
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/icons/
+
+  # fonts:
+  #   - family: Roboto
+  #     fonts:
+  #       - asset: assets/fonts/Roboto-Regular.ttf
+  #       - asset: assets/fonts/Roboto-Medium.ttf
+  #         weight: 500
+  #       - asset: assets/fonts/Roboto-Bold.ttf
+  #         weight: 700
