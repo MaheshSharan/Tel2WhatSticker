@@ -1,4 +1,5 @@
 # Telegram to WhatsApp Stickers Converter
+>⚠️ **WARNING: This project is in aggressive active development.**
 
 A Flutter mobile application that converts images and Telegram sticker packs to WhatsApp sticker format with direct integration to WhatsApp.
 
