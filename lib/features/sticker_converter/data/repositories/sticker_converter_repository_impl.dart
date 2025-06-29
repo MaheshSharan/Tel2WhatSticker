@@ -12,6 +12,7 @@ import '../models/sticker_pack_model.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/error/exceptions.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as p;
 
 @LazySingleton(as: StickerConverterRepository)
 class StickerConverterRepositoryImpl implements StickerConverterRepository {
@@ -61,7 +62,9 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
       
       // Process images one at a time to reduce memory usage
       final processedStickers = <StickerModel>[];
+      final skippedStickers = <String>[];
       bool hasAnimatedStickers = false;
+      bool hasStaticStickers = false;
       
       for (int i = 0; i < images.length; i++) {
         final file = images[i];
@@ -76,6 +79,13 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
           if (isAnimated) {
             hasAnimatedStickers = true;
             print('Detected animated sticker: ${file.path}');
+          } else {
+            hasStaticStickers = true;
+          }
+          
+          // Enforce that a pack cannot mix static and animated stickers
+          if (hasAnimatedStickers && hasStaticStickers) {
+            throw ProcessingException('A sticker pack cannot contain both static and animated stickers. Please use only static or only animated stickers in a single pack.');
           }
           
           // Determine output file extension based on input and animation
@@ -113,10 +123,11 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
           
           print('Processed sticker: ${file.path} -> ${fileSizeKB}KB (${isAnimated ? 'animated' : 'static'})');
           
-          // Validate individual sticker size (WhatsApp requirement: each sticker < 100KB)
-          if (fileSizeKB > 100) {
-            print('ERROR: Sticker exceeds 100KB limit: ${fileSizeKB}KB');
-            throw ProcessingException('Sticker file size (${fileSizeKB}KB) exceeds WhatsApp limit of 100KB');
+          // Validate individual sticker size (WhatsApp requirement: static < 100KB, animated < 500KB)
+          final maxStickerSizeKB = isAnimated ? 500 : 100;
+          if (fileSizeKB > maxStickerSizeKB) {
+            print('ERROR: Sticker exceeds ${maxStickerSizeKB}KB limit: ${fileSizeKB}KB');
+            throw ProcessingException('Sticker file size (${fileSizeKB}KB) exceeds WhatsApp limit of ${maxStickerSizeKB}KB');
           }
           
           if (fileSizeKB <= 0) {
@@ -124,7 +135,7 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
             throw ProcessingException('Processed sticker file is empty or invalid');
           }
           
-          print('✓ Sticker size validation passed: ${fileSizeKB}KB (limit: 100KB)');
+          print('✓ Sticker size validation passed: ${fileSizeKB}KB (limit: ${maxStickerSizeKB}KB)');
           
           // Get image dimensions from original file for metadata
           final dimensions = await _imageProcessingService.getImageDimensions(
@@ -155,10 +166,10 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
           
         } catch (e) {
           print('Error processing image ${file.path}: ${e.toString()}');
+          skippedStickers.add(file.path);
           _updateProgress(_currentState.copyWith(
             errorFiles: _currentState.errorFiles + 1,
           ));
-          
           // Continue processing other files even if one fails
           continue;
         }
@@ -166,6 +177,14 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
       
       if (processedStickers.isEmpty) {
         return const Left(ProcessingFailure('No stickers could be processed'));
+      }
+      
+      if (skippedStickers.isNotEmpty) {
+        print('\n=== SKIPPED STICKERS ===');
+        for (final skipped in skippedStickers) {
+          print('Sticker not included due to conversion error: $skipped');
+        }
+        print('========================\n');
       }
       
       // Log final sticker pack summary
@@ -184,14 +203,18 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
       
       print('Total pack size: ${totalSizeKB.toStringAsFixed(1)}KB');
       print('Average sticker size: ${(totalSizeKB / processedStickers.length).toStringAsFixed(1)}KB');
-      print('All stickers meet WhatsApp size requirement: ✓ (each < 100KB)');
+      if (hasAnimatedStickers) {
+        print('All stickers meet WhatsApp size requirement: ✓ (each < 500KB)');
+      } else {
+        print('All stickers meet WhatsApp size requirement: ✓ (each < 100KB)');
+      }
       print('=====================================\n');
       
       // Create tray image directly in the final sticker pack directory
-      final trayPath = await _imageProcessingService.createTrayImage(
-        processedStickers.first.imagePath,
-        finalPackDir.path,
-      );
+      final trayImageBytes = await File(processedStickers.first.imagePath).readAsBytes();
+      final compressedTrayBytes = await _imageProcessingService.createTrayImage(trayImageBytes);
+      final trayPath = p.join(finalPackDir.path, 'tray.png');
+      await File(trayPath).writeAsBytes(compressedTrayBytes, flush: true);
       // Debug log to confirm tray image exists at the expected location
       final trayFile = File(trayPath);
       final trayExists = await trayFile.exists();
@@ -327,15 +350,30 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
       }
       
       // Create tray image directly in the final sticker pack directory
-      final trayPath = await _imageProcessingService.createTrayImage(
-        processedStickers.first.imagePath,
-        packDir,
-      );
+      final trayImageBytes = await File(processedStickers.first.imagePath).readAsBytes();
+      final compressedTrayBytes = await _imageProcessingService.createTrayImage(trayImageBytes);
+      final trayPath = p.join(packDir, 'tray.png');
+      await File(trayPath).writeAsBytes(compressedTrayBytes, flush: true);
       // Debug log to confirm tray image exists at the expected location
       final trayFile = File(trayPath);
       final trayExists = await trayFile.exists();
       final traySize = trayExists ? await trayFile.length() : -1;
       print('DEBUG: Final tray image path: $trayPath, exists: $trayExists, size: ${traySize / 1024} KB');
+      // Log first 16 bytes of tray image
+      if (await trayFile.exists()) {
+        final trayBytes = await trayFile.readAsBytes();
+        final trayHeader = trayBytes.take(16).toList();
+        print('DEBUG: tray.png first 16 bytes: $trayHeader');
+      }
+      // Log first 16 bytes of first sticker file
+      if (processedStickers.isNotEmpty) {
+        final firstStickerFile = File(processedStickers.first.imagePath);
+        if (await firstStickerFile.exists()) {
+          final stickerBytes = await firstStickerFile.readAsBytes();
+          final stickerHeader = stickerBytes.take(16).toList();
+          print('DEBUG: first sticker first 16 bytes: $stickerHeader');
+        }
+      }
       // Create sticker pack
       final pack = StickerPackModel(
         identifier: 'telegram_$packName',

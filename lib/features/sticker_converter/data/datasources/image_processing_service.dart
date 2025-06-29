@@ -66,7 +66,6 @@ class ImageProcessingService {
       final outputPath = p.join(outputDir, '${DateTime.now().millisecondsSinceEpoch}_converted.webp');
 
       // FFmpeg command for GIF to animated WebP
-      // WhatsApp requires 512x512, <100KB, and looped animation
       final cmd = [
         '-y',
         '-i', '"$imagePath"',
@@ -81,8 +80,13 @@ class ImageProcessingService {
 
       final session = await FFmpegKit.execute(cmd);
       final returnCode = await session.getReturnCode();
+      // Always fetch and print FFmpeg logs for debugging
+      print('DEBUG: Fetching FFmpeg logs for this conversion...');
+      final logs = await session.getAllLogsAsString();
+      print('DEBUG: FFmpeg logs for this conversion:');
+      print(logs);
+      print('DEBUG: End of FFmpeg logs.');
       if (returnCode == null || !returnCode.isValueSuccess()) {
-        final logs = await session.getAllLogsAsString();
         throw ImageProcessingException('FFmpeg failed to convert GIF to WebP. Logs: $logs');
       }
 
@@ -92,15 +96,21 @@ class ImageProcessingService {
       }
       final webpBytes = await outputFile.readAsBytes();
       final fileSizeKB = webpBytes.length / 1024;
-      print('🎉 Animated WebP created: ${fileSizeKB.toStringAsFixed(1)}KB');
-      if (fileSizeKB > AppConstants.maxFileSizeKB) {
-        throw ImageProcessingException('Animated WebP exceeds WhatsApp size limit (${fileSizeKB.toStringAsFixed(1)}KB > ${AppConstants.maxFileSizeKB}KB)');
+      print('🎉 Animated WebP created: \u001b[1m${fileSizeKB.toStringAsFixed(1)}KB\u001b[0m');
+      if (fileSizeKB > AppConstants.maxAnimatedFileSizeKB) {
+        print('ERROR: Animated WebP exceeds WhatsApp size limit.');
+        print('  Output file: $outputPath');
+        print('  Output size: ${fileSizeKB.toStringAsFixed(1)}KB (limit: ${AppConstants.maxAnimatedFileSizeKB}KB)');
+        print('  FFmpeg logs for this conversion:');
+        print(logs);
+        print('DEBUG: End of FFmpeg logs for size error.');
+        throw ImageProcessingException('Animated WebP exceeds WhatsApp size limit (${fileSizeKB.toStringAsFixed(1)}KB > ${AppConstants.maxAnimatedFileSizeKB}KB)');
       }
       return webpBytes;
     } catch (e) {
       print('❌ Error in animated GIF to WebP conversion: $e');
-      print('🔄 Falling back to static frame extraction');
-      return await _extractBestFrameFromGif(imagePath);
+      // No fallback to static frame. Just throw the error.
+      throw ImageProcessingException('Failed to convert animated GIF to WebP: ${e.toString()}');
     }
   }
   
@@ -111,47 +121,13 @@ class ImageProcessingService {
       final file = File(imagePath);
       final bytes = await file.readAsBytes();
       final fileSizeKB = bytes.length / 1024;
-      if (fileSizeKB > AppConstants.maxFileSizeKB) {
-        throw ImageProcessingException('Animated WebP exceeds WhatsApp size limit (${fileSizeKB.toStringAsFixed(1)}KB > ${AppConstants.maxFileSizeKB}KB)');
+      if (fileSizeKB > AppConstants.maxAnimatedFileSizeKB) {
+        throw ImageProcessingException('Animated WebP exceeds WhatsApp size limit (${fileSizeKB.toStringAsFixed(1)}KB > ${AppConstants.maxAnimatedFileSizeKB}KB)');
       }
       // Optionally, validate dimensions here if needed
       return bytes;
     } catch (e) {
       throw ImageProcessingException('Failed to process animated WebP: ${e.toString()}');
-    }
-  }
-  
-  /// Fallback method: Extract best frame from GIF when animation processing fails
-  Future<Uint8List> _extractBestFrameFromGif(String imagePath) async {
-    try {
-      print('📸 Extracting best frame from animated GIF (fallback to static)');
-      
-      final file = File(imagePath);
-      final bytes = await file.readAsBytes();
-      
-      final decoder = img.GifDecoder();
-      final animation = decoder.decode(bytes);
-      
-      img.Image? bestFrame;
-      
-      if (animation != null && animation.numFrames > 1) {
-        print('🎞️ Found ${animation.numFrames} frames, extracting middle frame');
-        final frameIndex = animation.numFrames ~/ 2;
-        bestFrame = animation.getFrame(frameIndex);
-        print('⚠️ WARNING: Animation converted to static frame due to processing failure');
-      } else {
-        bestFrame = img.decodeImage(bytes);
-      }
-      
-      if (bestFrame == null) {
-        throw ImageProcessingException('Failed to decode GIF frames');
-      }
-      
-      final resizedImage = _resizeImageEfficient(bestFrame, AppConstants.stickerSize, AppConstants.stickerSize);
-      return await _compressImageToLimitEfficient(resizedImage, 80);
-      
-    } catch (e) {
-      throw ImageProcessingException('Failed to extract frame from GIF: ${e.toString()}');
     }
   }
   
@@ -198,7 +174,7 @@ class ImageProcessingService {
       // Adaptive compression based on file size
       int initialQuality = _getInitialQuality(fileSizeKB, image.width * image.height);
       
-      final compressedBytes = await _compressImageToLimitEfficient(image, initialQuality);
+      final compressedBytes = await _compressImageToLimitEfficient(image, initialQuality, AppConstants.maxStaticFileSizeKB);
       
       // Force garbage collection
       image = null;
@@ -277,13 +253,13 @@ class ImageProcessingService {
   }
   
   /// Efficient compression with adaptive quality and memory management
-  Future<Uint8List> _compressImageToLimitEfficient(img.Image image, int initialQuality) async {
+  Future<Uint8List> _compressImageToLimitEfficient(img.Image image, int initialQuality, int maxFileSizeKB) async {
     Uint8List? compressedBytes;
     int quality = initialQuality;
     int attempts = 0;
     const maxAttempts = 6; // Reduced attempts for faster processing
     
-    print('Starting efficient compression: target=${AppConstants.maxFileSizeKB}KB, startQuality=$initialQuality');
+    print('Starting efficient compression: target=${maxFileSizeKB}KB, startQuality=$initialQuality');
     
     do {
       attempts++;
@@ -296,13 +272,13 @@ class ImageProcessingService {
       final currentSizeKB = compressedBytes.length / 1024;
       print('Compression attempt $attempts: Quality=$quality, Size=${currentSizeKB.toStringAsFixed(1)}KB');
       
-      if (compressedBytes.length <= AppConstants.maxFileSizeKB * 1024) {
+      if (compressedBytes.length <= maxFileSizeKB * 1024) {
         print('✓ Compression successful! Final size: ${currentSizeKB.toStringAsFixed(1)}KB');
         return compressedBytes;
       }
       
       // Adaptive quality reduction based on how far we are from target
-      final sizeRatio = currentSizeKB / AppConstants.maxFileSizeKB;
+      final sizeRatio = currentSizeKB / maxFileSizeKB;
       if (sizeRatio > 3) {
         quality -= 20; // Big reduction for very large files
       } else if (sizeRatio > 2) {
@@ -319,16 +295,16 @@ class ImageProcessingService {
     } while (quality > 10 && attempts < maxAttempts);
     
     // If still too large, try dimension reduction
-    if (compressedBytes == null || compressedBytes.length > AppConstants.maxFileSizeKB * 1024) {
+    if (compressedBytes == null || compressedBytes.length > maxFileSizeKB * 1024) {
       print('Attempting dimension reduction as fallback...');
-      return await _compressWithDimensionReductionEfficient(image);
+      return await _compressWithDimensionReductionEfficient(image, maxFileSizeKB);
     }
     
     return compressedBytes;
   }
   
   /// Efficient dimension reduction with memory management
-  Future<Uint8List> _compressWithDimensionReductionEfficient(img.Image image) async {
+  Future<Uint8List> _compressWithDimensionReductionEfficient(img.Image image, int maxFileSizeKB) async {
     img.Image? workingImage = image;
     
     try {
@@ -356,7 +332,7 @@ class ImageProcessingService {
           
           print('Dimension reduction attempt: Quality=$quality, Size=${currentSizeKB.toStringAsFixed(1)}KB');
           
-          if (compressedBytes.length <= AppConstants.maxFileSizeKB * 1024) {
+          if (compressedBytes.length <= maxFileSizeKB * 1024) {
             print('✓ Compression successful with reduced dimensions! Final size: ${currentSizeKB.toStringAsFixed(1)}KB');
             return compressedBytes;
           }
@@ -376,13 +352,13 @@ class ImageProcessingService {
       final finalBytes = Uint8List.fromList(img.encodeJpg(verySmallImage, quality: 20));
       final finalSizeKB = finalBytes.length / 1024;
       
-      if (finalBytes.length <= AppConstants.maxFileSizeKB * 1024) {
+      if (finalBytes.length <= maxFileSizeKB * 1024) {
         print('✓ Final aggressive compression successful: ${finalSizeKB.toStringAsFixed(1)}KB');
         return finalBytes;
       }
       
       throw ImageProcessingException(
-        'Unable to compress image to required size after all attempts. Final size: ${finalSizeKB.toStringAsFixed(1)}KB (limit: ${AppConstants.maxFileSizeKB}KB). Please use a smaller or lower quality image.'
+        'Unable to compress image to required size after all attempts. Final size: ${finalSizeKB.toStringAsFixed(1)}KB (limit: ${maxFileSizeKB}KB). Please use a smaller or lower quality image.'
       );
       
     } finally {
@@ -649,78 +625,60 @@ class ImageProcessingService {
     }
   }
   
-  Future<String> createTrayImage(String stickerPath, String outputDir) async {
-    try {
-      final file = File(stickerPath);
-      final bytes = await file.readAsBytes();
-      final extension = stickerPath.toLowerCase().split('.').last;
-      img.Image? trayImage;
-      if (extension == 'webp') {
-        trayImage = img.decodeWebP(bytes);
-        if (trayImage == null) {
-          print('Failed to decode WebP, using default tray image');
-          trayImage = img.Image(width: 96, height: 96);
-          img.fill(trayImage, color: img.ColorRgb8(255, 255, 255));
-        }
-      } else if (extension == 'png' || extension == 'jpg' || extension == 'jpeg') {
-        trayImage = img.decodeImage(bytes);
-        if (trayImage == null) {
-          print('Failed to decode image, using default tray image');
-          trayImage = img.Image(width: 96, height: 96);
-          img.fill(trayImage, color: img.ColorRgb8(255, 255, 255));
-        }
-      } else {
-        print('Unsupported tray image format, using default tray image');
-        trayImage = img.Image(width: 96, height: 96);
-        img.fill(trayImage, color: img.ColorRgb8(255, 255, 255));
-      }
-      // Resize to 96x96 if needed
-      if (trayImage.width != 96 || trayImage.height != 96) {
-        trayImage = img.copyResize(trayImage, width: 96, height: 96, interpolation: img.Interpolation.linear);
-      }
-      // Compress and write directly to outputDir as tray.png
-      final trayPath = p.join(outputDir, 'tray.png');
-      int size = 96;
-      List<int> trayImageBytes = [];
-      bool success = false;
-      while (size >= 64 && !success) {
-        final resized = img.copyResize(trayImage, width: size, height: size, interpolation: img.Interpolation.linear);
-        trayImageBytes = img.encodePng(resized, level: 9, filter: img.PngFilter.none);
-        if (trayImageBytes.length < 50 * 1024) {
-          success = true;
-          break;
-        }
-        trayImageBytes = img.encodePng(resized, level: 9);
-        if (trayImageBytes.length < 50 * 1024) {
-          success = true;
-          break;
-        }
-        size -= 8;
-      }
-      if (!success) {
-        // Fallback: minimal 64x64 PNG
-        final fallback = img.copyResize(trayImage, width: 64, height: 64, interpolation: img.Interpolation.linear);
-        trayImageBytes = img.encodePng(fallback, level: 9);
-        print('WARNING: Tray image could not be compressed below 50KB at 96x96, using 64x64 fallback.');
-      }
-      final trayFile = File(trayPath);
-      await trayFile.writeAsBytes(trayImageBytes, flush: true);
-      // Validate
-      final exists = await trayFile.exists();
-      final fileSize = exists ? await trayFile.length() : -1;
-      final header = trayImageBytes.take(16).toList();
-      final decoded = img.decodePng(Uint8List.fromList(trayImageBytes));
-      final width = decoded?.width;
-      final height = decoded?.height;
-      print('DEBUG: tray.png written to $trayPath, exists: $exists, size: ${fileSize / 1024} KB, header: $header, dimensions: ${width}x${height}');
-      if (!exists || fileSize > 50 * 1024 || header[0] != 137 || header[1] != 80 || width != null && width > 96 || height != null && height > 96) {
-        throw Exception('Tray image validation failed: exists=$exists, size=${fileSize / 1024} KB, header=$header, dimensions=${width}x${height}');
-      }
-      return trayPath;
-    } catch (e, st) {
-      print('ERROR: Failed to create tray image: $e\n$st');
-      rethrow;
+  Future<Uint8List> createTrayImage(Uint8List imageBytes) async {
+    // Resize to 64x64
+    final original = img.decodeImage(imageBytes);
+    if (original == null) {
+      throw ImageProcessingException('Failed to decode tray image');
     }
+    final trayImage = img.copyResize(original, width: 64, height: 64, interpolation: img.Interpolation.average);
+
+    // Try compression levels from 9 (max) down to 0
+    Uint8List? bestResult;
+    int bestSize = 1 << 30;
+    int bestLevel = 9;
+    for (int level = 9; level >= 0; level--) {
+      final pngBytes = Uint8List.fromList(img.encodePng(trayImage, level: level));
+      final sizeKB = pngBytes.lengthInBytes / 1024;
+      print('Tray image compression attempt: level=$level, size=${sizeKB.toStringAsFixed(2)} KB');
+      if (sizeKB <= 50) {
+        print('Tray image successfully compressed to ${sizeKB.toStringAsFixed(2)} KB at level $level.');
+        return pngBytes;
+      }
+      if (pngBytes.lengthInBytes < bestSize) {
+        bestResult = pngBytes;
+        bestSize = pngBytes.lengthInBytes;
+        bestLevel = level;
+      }
+    }
+    // If we get here, all attempts failed
+    print('ERROR: Failed to compress tray image below 50KB. Best result: ${bestSize / 1024} KB at level $bestLevel. Using default tray image.');
+    // Create a visually pleasant default tray image (gradient with border)
+    final defaultTray = img.Image(width: 64, height: 64);
+    // Draw a vertical gradient (blue to purple)
+    for (int y = 0; y < 64; y++) {
+      final t = y / 63.0;
+      final r = (80 + (120 * t)).toInt(); // 80-200
+      final g = (120 + (40 * t)).toInt(); // 120-160
+      final b = (220 - (60 * t)).toInt(); // 220-160
+      for (int x = 0; x < 64; x++) {
+        defaultTray.setPixelRgba(x, y, r, g, b, 255);
+      }
+    }
+    // Draw a white border
+    for (int i = 0; i < 64; i++) {
+      defaultTray.setPixelRgba(i, 0, 255, 255, 255, 255);
+      defaultTray.setPixelRgba(i, 63, 255, 255, 255, 255);
+      defaultTray.setPixelRgba(0, i, 255, 255, 255, 255);
+      defaultTray.setPixelRgba(63, i, 255, 255, 255, 255);
+    }
+    final defaultPng = Uint8List.fromList(img.encodePng(defaultTray, level: 9));
+    final defaultSizeKB = defaultPng.lengthInBytes / 1024;
+    print('Default tray image generated: ${defaultSizeKB.toStringAsFixed(2)} KB');
+    if (defaultSizeKB > 50) {
+      throw ImageProcessingException('Default tray image unexpectedly exceeds 50KB (${defaultSizeKB.toStringAsFixed(2)} KB)');
+    }
+    return defaultPng;
   }
   
   Future<List<String>> processStickerPack(

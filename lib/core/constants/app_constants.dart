@@ -7,6 +7,8 @@ class AppConstants {
   static const int stickerSize = 512;
   static const int maxStickerSize = 512;
   static const int maxFileSizeKB = 100;
+  static const int maxStaticFileSizeKB = 100;
+  static const int maxAnimatedFileSizeKB = 500;
   static const int minStickersInPack = 3;
   static const int maxStickersInPack = 30;
   

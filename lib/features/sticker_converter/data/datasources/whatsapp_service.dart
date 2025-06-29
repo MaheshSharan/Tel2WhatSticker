@@ -11,6 +11,7 @@ import 'package:path/path.dart' as path;
 import '../../../../core/error/exceptions.dart';
 import '../models/sticker_pack_model.dart';
 import 'package:image/image.dart' as img;
+import '../../../../core/constants/app_constants.dart';
 
 @injectable
 class WhatsAppService {
@@ -73,6 +74,7 @@ class WhatsAppService {
         identifier: pack.identifier,
         name: pack.name,
         publisher: pack.publisher,
+        animatedStickerPack: pack.animated,
       );
       
       // Convert all sticker images to .webp format using StickerPackUtil
@@ -219,10 +221,19 @@ class WhatsAppService {
     } on PlatformException catch (e) {
       print('DEBUG: PlatformException: ${e.code} - ${e.message}');
       throw WhatsAppException('Platform error: ${e.message ?? 'An unexpected platform error occurred'}');
-    } catch (e) {
-      print('DEBUG: General exception: ${e.toString()}');
-      print('DEBUG: Exception type: ${e.runtimeType}');
-      throw WhatsAppException('Failed to add sticker pack to WhatsApp: ${e.toString()}');
+    } catch (e, st) {
+      print('ERROR: Exception during WhatsApp integration:');
+      print('Type: \\${e.runtimeType}');
+      print('Message: \\${e is Exception ? e.toString() : e}');
+      if (e is PlatformException) {
+        print('PlatformException code: \\${e.code}');
+        print('PlatformException message: \\${e.message}');
+        print('PlatformException details: \\${e.details}');
+      } else if (e is WhatsAppException) {
+        print('WhatsAppException message: \\${e.toString()}');
+      }
+      print('Stack trace: \\n$st');
+      rethrow;
     }
   }
   
@@ -271,12 +282,12 @@ class WhatsAppService {
       
       // Check file size based on animation status
       final fileSize = await stickerFile.length();
-      final maxSize = hasAnimatedStickers ? 500 * 1024 : 100 * 1024; // 500KB for animated, 100KB for static
+      final maxSize = isAnimated ? AppConstants.maxAnimatedFileSizeKB * 1024 : AppConstants.maxStaticFileSizeKB * 1024;
       
       if (fileSize > maxSize) {
-        final sizeType = hasAnimatedStickers ? 'animated' : 'static';
-        final maxSizeKB = hasAnimatedStickers ? '500KB' : '100KB';
-        throw ValidationException('$sizeType sticker file too large (${(fileSize / 1024).toStringAsFixed(1)}KB > $maxSizeKB): ${sticker.imagePath}');
+        final sizeType = isAnimated ? 'animated' : 'static';
+        final maxSizeKB = isAnimated ? AppConstants.maxAnimatedFileSizeKB : AppConstants.maxStaticFileSizeKB;
+        throw ValidationException('$sizeType sticker file too large (${(fileSize / 1024).toStringAsFixed(1)}KB > ${maxSizeKB}KB): ${sticker.imagePath}');
       }
     }
     
