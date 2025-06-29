@@ -38,7 +38,7 @@ android {
 
     defaultConfig {
         applicationId "com.stickerapp.telegram_to_whatsapp_stickers"
-        minSdkVersion 21
+        minSdkVersion 24
         targetSdkVersion 35
         versionCode flutterVersionCode.toInteger()
         versionName flutterVersionName

@@ -12,8 +12,9 @@ A Flutter mobile application that converts images and Telegram sticker packs to 
 ### Image Processing
 - Automatic conversion to WhatsApp-compatible format
 - Resizing to optimal dimensions (512x512px maximum)
-- Compression to meet WhatsApp file size requirements
+- **Individual sticker compression to under 100KB** (WhatsApp requirement)
 - Support for both static and animated stickers
+- Aggressive compression with quality reduction when needed
 
 ### WhatsApp Integration
 - Direct "Add to WhatsApp" functionality
@@ -102,9 +103,10 @@ flutter run
 ## Limitations
 
 - Maximum 30 stickers per pack (WhatsApp limitation)
-- Individual sticker file size limit: 500KB
+- **Each individual sticker must be under 100KB** (WhatsApp requirement)
 - Animated stickers are converted to static format
 - ZIP files larger than 50MB may cause performance issues
+- Very high resolution images may require aggressive compression
 
 ## Technical Details
 
@@ -144,6 +146,12 @@ flutter run
 - Close other apps to free memory
 - Try processing fewer images at once
 - Restart the application
+
+**Sticker size compression issues**
+- App automatically compresses images to under 100KB per sticker
+- Very high resolution images may require aggressive compression
+- If compression fails, try using smaller source images
+- Check console output for detailed compression information
 
 ## Contributing
 

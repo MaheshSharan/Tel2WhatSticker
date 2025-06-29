@@ -50,46 +50,82 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
         return Left(validationResult.fold((l) => l, (r) => throw Exception()));
       }
       
-      // Create output directory
+      // Create output directory for this pack
       final outputDir = await _imageProcessingService.getOutputDirectory();
-      final packDir = '$outputDir/${DateTime.now().millisecondsSinceEpoch}';
+      final packDir = '$outputDir/pack_${DateTime.now().millisecondsSinceEpoch}';
       await Directory(packDir).create(recursive: true);
       
-      // Process images
+      // Process images one at a time to reduce memory usage
       final processedStickers = <StickerModel>[];
+      bool hasAnimatedStickers = false;
       
       for (int i = 0; i < images.length; i++) {
         final file = images[i];
-        
-        // Determine output file extension based on input
-        final inputExtension = file.path.toLowerCase().split('.').last;
-        final outputExtension = inputExtension == 'webp' ? 'webp' : 'jpg';
-        final fileName = '${i}_sticker.$outputExtension';
-        final outputPath = '$packDir/$fileName';
+        print('\n--- Processing image ${i + 1}/${images.length}: ${file.path} ---');
         
         try {
           // Update progress for this file
           _updateFileProgress(file.path, 0.0);
           
-          // Process image
+          // Check if this is an animated sticker
+          final isAnimated = await _imageProcessingService.isAnimatedFile(file.path);
+          if (isAnimated) {
+            hasAnimatedStickers = true;
+            print('Detected animated sticker: ${file.path}');
+          }
+          
+          // Determine output file extension based on input and animation
+          final inputExtension = file.path.toLowerCase().split('.').last;
+          String outputExtension;
+          
+          if (isAnimated && inputExtension == 'gif') {
+            outputExtension = 'webp'; // Convert animated GIF to WebP
+          } else if (isAnimated && inputExtension == 'webp') {
+            outputExtension = 'webp'; // Keep animated WebP
+          } else {
+            outputExtension = 'jpg'; // Static formats to JPEG
+          }
+          
+          final fileName = '${i}_sticker.$outputExtension';
+          final outputPath = '$packDir/$fileName';
+          
+          _updateFileProgress(file.path, 0.25);
+          
+          // Process image with memory-efficient approach
+          print('Processing with target format: $outputExtension');
           final processedBytes = await _imageProcessingService.processImageForWhatsApp(
             file.path,
           );
+          
+          _updateFileProgress(file.path, 0.75);
           
           // Save processed image
           final outputFile = File(outputPath);
           await outputFile.writeAsBytes(processedBytes);
           
-          _updateFileProgress(file.path, 0.5);
+          // Validate file size and requirements
+          final fileSizeBytes = processedBytes.length;
+          final fileSizeKB = (fileSizeBytes / 1024).round();
           
-          // Get image dimensions
+          print('Processed sticker: ${file.path} -> ${fileSizeKB}KB (${isAnimated ? 'animated' : 'static'})');
+          
+          // Validate individual sticker size (WhatsApp requirement: each sticker < 100KB)
+          if (fileSizeKB > 100) {
+            print('ERROR: Sticker exceeds 100KB limit: ${fileSizeKB}KB');
+            throw ProcessingException('Sticker file size (${fileSizeKB}KB) exceeds WhatsApp limit of 100KB');
+          }
+          
+          if (fileSizeKB <= 0) {
+            print('ERROR: Processed sticker has invalid size: ${fileSizeKB}KB');
+            throw ProcessingException('Processed sticker file is empty or invalid');
+          }
+          
+          print('✓ Sticker size validation passed: ${fileSizeKB}KB (limit: 100KB)');
+          
+          // Get image dimensions from original file for metadata
           final dimensions = await _imageProcessingService.getImageDimensions(
             file.path  // Use original file path for dimension checking
           );
-          
-          // Get file size
-          final fileSizeBytes = processedBytes.length;
-          final fileSizeKB = (fileSizeBytes / 1024).round();
           
           // Create sticker model
           final sticker = StickerModel(
@@ -107,12 +143,19 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
             completedFiles: _currentState.completedFiles + 1,
           ));
           
+          // Force garbage collection after each image to free memory
+          print('Image ${i + 1} processed successfully. Memory cleanup...');
+          
+          // Add a small delay to allow garbage collection
+          await Future.delayed(const Duration(milliseconds: 100));
+          
         } catch (e) {
+          print('Error processing image ${file.path}: ${e.toString()}');
           _updateProgress(_currentState.copyWith(
             errorFiles: _currentState.errorFiles + 1,
           ));
           
-          // Continue processing other files
+          // Continue processing other files even if one fails
           continue;
         }
       }
@@ -121,20 +164,39 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
         return const Left(ProcessingFailure('No stickers could be processed'));
       }
       
+      // Log final sticker pack summary
+      print('\n=== STICKER PACK PROCESSING SUMMARY ===');
+      print('Total stickers processed: ${processedStickers.length}');
+      print('Individual sticker sizes:');
+      
+      double totalSizeKB = 0;
+      int stickerIndex = 1;
+      
+      for (final sticker in processedStickers) {
+        totalSizeKB += sticker.fileSizeKB;
+        print('  Sticker $stickerIndex: ${sticker.fileSizeKB}KB');
+        stickerIndex++;
+      }
+      
+      print('Total pack size: ${totalSizeKB.toStringAsFixed(1)}KB');
+      print('Average sticker size: ${(totalSizeKB / processedStickers.length).toStringAsFixed(1)}KB');
+      print('All stickers meet WhatsApp size requirement: ✓ (each < 100KB)');
+      print('=====================================\n');
+      
       // Create tray image from first sticker
       final trayPath = await _imageProcessingService.createTrayImage(
         processedStickers.first.imagePath,
         packDir,
       );
       
-      // Create sticker pack
+      // Create sticker pack with proper animated flag
       final pack = StickerPackModel(
         identifier: DateTime.now().millisecondsSinceEpoch.toString(),
         name: packName,
         publisher: publisher,
         trayImagePath: trayPath,
         stickers: processedStickers,
-        animated: false,
+        animated: hasAnimatedStickers, // Set the animated flag based on detection
       );
       
       _updateProgress(_currentState.copyWith(

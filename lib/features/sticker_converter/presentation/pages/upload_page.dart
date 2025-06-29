@@ -6,6 +6,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../domain/entities/sticker_pack_entity.dart';
 import '../bloc/sticker_converter_bloc.dart';
 import '../bloc/sticker_converter_event.dart';
 import '../bloc/sticker_converter_state.dart';
@@ -132,7 +133,13 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
             // Specific states
             initial: () {},
             loading: () {},
-            processing: (progress) {},
+            processing: (progress) {
+              // Show processing feedback if needed
+              if (progress.status == ProcessingStatus.processing) {
+                // Could add a snackbar or other UI feedback here
+                print('Processing stickers: ${progress.completedFiles}/${progress.totalFiles}');
+              }
+            },
             processCompleted: (pack) {
               // Navigate to preview page with the created pack
               context.go(AppRouter.preview, extra: {
@@ -460,8 +467,9 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
       child: BlocBuilder<StickerConverterBloc, StickerConverterState>(
         builder: (context, state) {
           final isLoading = state.maybeWhen(
-            (isLoading, isWhatsAppInstalled, isProcessing, currentPack, processingProgress, validatedFiles, extractedDirectory, error, successMessage) => isLoading,
+            (isLoading, isWhatsAppInstalled, isProcessing, currentPack, processingProgress, validatedFiles, extractedDirectory, error, successMessage) => isLoading || isProcessing,
             loading: () => true,
+            processing: (progress) => true,
             orElse: () => false,
           );
           
