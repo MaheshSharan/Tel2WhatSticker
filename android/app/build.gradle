@@ -23,7 +23,7 @@ if (flutterVersionName == null) {
 }
 
 android {
-    namespace "com.stickerapp.telegram_to_whatsapp_stickers"
+    namespace 'com.stickerapp.telegram_to_whatsapp_stickers'
     compileSdk 35
     ndkVersion flutter.ndkVersion
 

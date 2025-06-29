@@ -6,6 +6,8 @@ import 'package:injectable/injectable.dart';
 import 'package:image/image.dart' as img;
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/error/exceptions.dart';
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:path/path.dart' as p;
 
 @injectable
 class ImageProcessingService {
@@ -52,50 +54,49 @@ class ImageProcessingService {
     }
   }
   
-  /// Convert animated GIF to animated WebP using image package
+  /// Convert animated GIF to animated WebP using ffmpeg_kit_flutter
   Future<Uint8List> _processAnimatedGifToWebP(String imagePath) async {
     try {
-      print('🎬 Converting animated GIF to animated WebP for WhatsApp (preserving animation)');
-      
+      print('🎬 Converting animated GIF to animated WebP for WhatsApp (using FFmpeg)');
       final file = File(imagePath);
-      final bytes = await file.readAsBytes();
-      
-      // Decode animated GIF
-      final decoder = img.GifDecoder();
-      final animation = decoder.decode(bytes);
-      
-      if (animation == null || animation.numFrames <= 1) {
-        print('⚠️ GIF is not animated, processing as static image');
-        return await _extractBestFrameFromGif(imagePath);
+      if (!await file.exists()) {
+        throw ImageProcessingException('GIF file not found: $imagePath');
       }
-      
-      print('🎞️ Processing ${animation.numFrames} frames from animated GIF');
-      
-      // Try to encode the animation directly as WebP
-      try {
-        final webpBytes = img.encodeWebP(animation);
-        if (webpBytes != null) {
-          final animatedWebP = Uint8List.fromList(webpBytes);
-          final fileSizeKB = animatedWebP.length / 1024;
-          
-          print('🎉 Animated WebP created: ${fileSizeKB.toStringAsFixed(1)}KB with ${animation.numFrames} frames');
-          
-          // Check file size and compress if needed
-          if (fileSizeKB <= AppConstants.maxFileSizeKB) {
-            print('✅ Animated WebP is within size limit');
-            return animatedWebP;
-          } else {
-            print('⚠️ Animated WebP too large (${fileSizeKB.toStringAsFixed(1)}KB), trying compression');
-            return await _compressAnimatedGifFrames(animation);
-          }
-        }
-      } catch (e) {
-        print('⚠️ WebP animation encoding failed: $e');
+      final outputDir = await getOutputDirectory();
+      final outputPath = p.join(outputDir, '${DateTime.now().millisecondsSinceEpoch}_converted.webp');
+
+      // FFmpeg command for GIF to animated WebP
+      // WhatsApp requires 512x512, <100KB, and looped animation
+      final cmd = [
+        '-y',
+        '-i', '"$imagePath"',
+        '-vf', 'scale=w=${AppConstants.stickerSize}:h=${AppConstants.stickerSize}:force_original_aspect_ratio=decrease,pad=${AppConstants.stickerSize}:${AppConstants.stickerSize}:(ow-iw)/2:(oh-ih)/2:color=0x00000000',
+        '-loop', '0',
+        '-lossless', '0',
+        '-qscale', '80',
+        '-preset', 'picture',
+        '-an',
+        '"$outputPath"'
+      ].join(' ');
+
+      final session = await FFmpegKit.execute(cmd);
+      final returnCode = await session.getReturnCode();
+      if (returnCode == null || !returnCode.isValueSuccess()) {
+        final logs = await session.getAllLogsAsString();
+        throw ImageProcessingException('FFmpeg failed to convert GIF to WebP. Logs: $logs');
       }
-      
-      // Fallback: try to create compressed version with reduced frames
-      return await _compressAnimatedGifFrames(animation);
-      
+
+      final outputFile = File(outputPath);
+      if (!await outputFile.exists()) {
+        throw ImageProcessingException('FFmpeg did not produce output file: $outputPath');
+      }
+      final webpBytes = await outputFile.readAsBytes();
+      final fileSizeKB = webpBytes.length / 1024;
+      print('🎉 Animated WebP created: ${fileSizeKB.toStringAsFixed(1)}KB');
+      if (fileSizeKB > AppConstants.maxFileSizeKB) {
+        throw ImageProcessingException('Animated WebP exceeds WhatsApp size limit (${fileSizeKB.toStringAsFixed(1)}KB > ${AppConstants.maxFileSizeKB}KB)');
+      }
+      return webpBytes;
     } catch (e) {
       print('❌ Error in animated GIF to WebP conversion: $e');
       print('🔄 Falling back to static frame extraction');
@@ -103,119 +104,19 @@ class ImageProcessingService {
     }
   }
   
-  /// Compress animated GIF by reducing frames and creating optimized WebP
-  Future<Uint8List> _compressAnimatedGifFrames(img.Animation animation) async {
-    try {
-      print('🔧 Compressing animated GIF frames');
-      
-      // Try different compression strategies
-      final strategies = [
-        {'frameSkip': 1, 'maxFrames': 20},  // Keep up to 20 frames
-        {'frameSkip': 2, 'maxFrames': 15},  // Skip every other frame, max 15
-        {'frameSkip': 3, 'maxFrames': 10},  // Keep every 3rd frame, max 10
-      ];
-      
-      for (final strategy in strategies) {
-        final frameSkip = strategy['frameSkip'] as int;
-        final maxFrames = strategy['maxFrames'] as int;
-        
-        print('� Trying strategy: skip=$frameSkip, maxFrames=$maxFrames');
-        
-        // Create new animation with reduced frames
-        final compressedFrames = <img.Image>[];
-        
-        int frameCount = 0;
-        for (int i = 0; i < animation.numFrames && frameCount < maxFrames; i += frameSkip) {
-          final frame = animation.getFrame(i);
-          
-          // Resize frame to WhatsApp requirements
-          final resizedFrame = _resizeImageEfficient(frame, AppConstants.stickerSize, AppConstants.stickerSize);
-          compressedFrames.add(resizedFrame);
-          frameCount++;
-        }
-        
-        // Create new animation from compressed frames
-        final compressedAnimation = img.Animation();
-        for (final frame in compressedFrames) {
-          compressedAnimation.addFrame(frame);
-        }
-        
-        // Try to encode the compressed animation
-        final webpBytes = img.encodeWebP(compressedAnimation);
-        if (webpBytes != null) {
-          final compressedWebP = Uint8List.fromList(webpBytes);
-          final fileSizeKB = compressedWebP.length / 1024;
-          
-          print('� Compressed animation: ${fileSizeKB.toStringAsFixed(1)}KB with ${compressedFrames.length} frames');
-          
-          if (fileSizeKB <= AppConstants.maxFileSizeKB) {
-            print('✅ Compressed animated WebP is within size limit');
-            return compressedWebP;
-          }
-        }
-      }
-      
-      // If all strategies fail, extract best frame
-      print('⚠️ Could not compress animated WebP to required size, extracting best frame');
-      final bestFrame = animation.getFrame(animation.numFrames ~/ 2);
-      final resizedFrame = _resizeImageEfficient(bestFrame, AppConstants.stickerSize, AppConstants.stickerSize);
-      return await _compressImageToLimitEfficient(resizedFrame, 80);
-      
-    } catch (e) {
-      print('❌ Error compressing animated GIF frames: $e');
-      // Extract best frame as final fallback
-      final bestFrame = animation.getFrame(animation.numFrames ~/ 2);
-      final resizedFrame = _resizeImageEfficient(bestFrame, AppConstants.stickerSize, AppConstants.stickerSize);
-      return await _compressImageToLimitEfficient(resizedFrame, 80);
-    }
-  }
-  
-  /// Process animated WebP files 
+  /// Process animated WebP files (validate and pass through)
   Future<Uint8List> _processAnimatedWebP(String imagePath) async {
     try {
       print('🎬 Processing animated WebP file');
-      
       final file = File(imagePath);
       final bytes = await file.readAsBytes();
       final fileSizeKB = bytes.length / 1024;
-      
-      // If already suitable size, return as-is
-      if (fileSizeKB <= AppConstants.maxFileSizeKB) {
-        print('✅ Animated WebP already suitable size: ${fileSizeKB.toStringAsFixed(1)}KB');
-        return bytes;
+      if (fileSizeKB > AppConstants.maxFileSizeKB) {
+        throw ImageProcessingException('Animated WebP exceeds WhatsApp size limit (${fileSizeKB.toStringAsFixed(1)}KB > ${AppConstants.maxFileSizeKB}KB)');
       }
-      
-      // Try to decode and recompress the animated WebP
-      try {
-        final decoder = img.WebPDecoder();
-        final animation = decoder.decode(bytes);
-        
-        if (animation != null && animation.numFrames > 1) {
-          print('🎞️ Found animated WebP with ${animation.numFrames} frames, recompressing');
-          return await _compressAnimatedGifFrames(animation);
-        } else {
-          print('📸 WebP appears to be static, processing normally');
-          // Process as static image
-          final image = img.decodeWebP(bytes);
-          if (image != null) {
-            final resizedImage = _resizeImageEfficient(image, AppConstants.stickerSize, AppConstants.stickerSize);
-            return await _compressImageToLimitEfficient(resizedImage, 75);
-          }
-        }
-      } catch (e) {
-        print('⚠️ WebP decoding failed: $e');
-      }
-      
-      // If decoding fails but file size is not too large, return original
-      if (fileSizeKB <= AppConstants.maxFileSizeKB * 1.5) {
-        print('📋 Returning original WebP (acceptable size)');
-        return bytes;
-      }
-      
-      throw ImageProcessingException('WebP file too large and recompression failed');
-      
+      // Optionally, validate dimensions here if needed
+      return bytes;
     } catch (e) {
-      if (e is ImageProcessingException) rethrow;
       throw ImageProcessingException('Failed to process animated WebP: ${e.toString()}');
     }
   }
@@ -752,78 +653,73 @@ class ImageProcessingService {
     try {
       final file = File(stickerPath);
       final bytes = await file.readAsBytes();
-      
-      // Check if it's a WebP file
       final extension = stickerPath.toLowerCase().split('.').last;
+      img.Image? trayImage;
       if (extension == 'webp') {
-        // For WebP files, create a simple colored tray image since we can't decode them
-        print('Creating default tray image for WebP sticker');
-        
-        // Create a simple 96x96 colored image
-        final trayImage = img.Image(width: 96, height: 96);
-        
-        // Fill with a purple color (matching app theme)
-        img.fill(trayImage, color: img.ColorRgb8(124, 77, 255)); // Primary color
-        
-        // Save as PNG
-        final trayImageBytes = img.encodePng(trayImage);
-        final trayImagePath = '$outputDir/tray.png';
-        final trayFile = File(trayImagePath);
-        await trayFile.writeAsBytes(trayImageBytes);
-        
-        return trayImagePath;
+        trayImage = img.decodeWebP(bytes);
+        if (trayImage == null) {
+          print('Failed to decode WebP, using default tray image');
+          trayImage = img.Image(width: 96, height: 96);
+          img.fill(trayImage, color: img.ColorRgb8(255, 255, 255));
+        }
+      } else if (extension == 'png' || extension == 'jpg' || extension == 'jpeg') {
+        trayImage = img.decodeImage(bytes);
+        if (trayImage == null) {
+          print('Failed to decode image, using default tray image');
+          trayImage = img.Image(width: 96, height: 96);
+          img.fill(trayImage, color: img.ColorRgb8(255, 255, 255));
+        }
+      } else {
+        print('Unsupported tray image format, using default tray image');
+        trayImage = img.Image(width: 96, height: 96);
+        img.fill(trayImage, color: img.ColorRgb8(255, 255, 255));
       }
-      
-      // For non-WebP files, decode and resize
-      final image = img.decodeImage(bytes);
-      
-      if (image == null) {
-        // If decoding fails, create a default tray image
-        print('Failed to decode sticker image, creating default tray');
-        
-        final trayImage = img.Image(width: 96, height: 96);
-        img.fill(trayImage, color: img.ColorRgb8(124, 77, 255));
-        
-        final trayImageBytes = img.encodePng(trayImage);
-        final trayImagePath = '$outputDir/tray.png';
-        final trayFile = File(trayImagePath);
-        await trayFile.writeAsBytes(trayImageBytes);
-        
-        return trayImagePath;
+      // Resize to 96x96 if needed
+      if (trayImage.width != 96 || trayImage.height != 96) {
+        trayImage = img.copyResize(trayImage, width: 96, height: 96, interpolation: img.Interpolation.linear);
       }
-      
-      // Create 96x96 tray image
-      final trayImage = img.copyResize(
-        image,
-        width: 96,
-        height: 96,
-        interpolation: img.Interpolation.linear,
-      );
-      
-      // Save as PNG
-      final trayImageBytes = img.encodePng(trayImage);
-      final trayImagePath = '$outputDir/tray.png';
-      final trayFile = File(trayImagePath);
-      await trayFile.writeAsBytes(trayImageBytes);
-      
-      return trayImagePath;
-    } catch (e) {
-      print('Error creating tray image: ${e.toString()}');
-      
-      // Create a fallback tray image
-      try {
-        final trayImage = img.Image(width: 96, height: 96);
-        img.fill(trayImage, color: img.ColorRgb8(124, 77, 255));
-        
-        final trayImageBytes = img.encodePng(trayImage);
-        final trayImagePath = '$outputDir/tray.png';
-        final trayFile = File(trayImagePath);
-        await trayFile.writeAsBytes(trayImageBytes);
-        
-        return trayImagePath;
-      } catch (fallbackError) {
-        throw ImageProcessingException('Failed to create tray image: ${e.toString()}');
+      // Compress and write directly to outputDir as tray.png
+      final trayPath = p.join(outputDir, 'tray.png');
+      int size = 96;
+      List<int> trayImageBytes = [];
+      bool success = false;
+      while (size >= 64 && !success) {
+        final resized = img.copyResize(trayImage, width: size, height: size, interpolation: img.Interpolation.linear);
+        trayImageBytes = img.encodePng(resized, level: 9, filter: img.PngFilter.none);
+        if (trayImageBytes.length < 50 * 1024) {
+          success = true;
+          break;
+        }
+        trayImageBytes = img.encodePng(resized, level: 9);
+        if (trayImageBytes.length < 50 * 1024) {
+          success = true;
+          break;
+        }
+        size -= 8;
       }
+      if (!success) {
+        // Fallback: minimal 64x64 PNG
+        final fallback = img.copyResize(trayImage, width: 64, height: 64, interpolation: img.Interpolation.linear);
+        trayImageBytes = img.encodePng(fallback, level: 9);
+        print('WARNING: Tray image could not be compressed below 50KB at 96x96, using 64x64 fallback.');
+      }
+      final trayFile = File(trayPath);
+      await trayFile.writeAsBytes(trayImageBytes, flush: true);
+      // Validate
+      final exists = await trayFile.exists();
+      final fileSize = exists ? await trayFile.length() : -1;
+      final header = trayImageBytes.take(16).toList();
+      final decoded = img.decodePng(Uint8List.fromList(trayImageBytes));
+      final width = decoded?.width;
+      final height = decoded?.height;
+      print('DEBUG: tray.png written to $trayPath, exists: $exists, size: ${fileSize / 1024} KB, header: $header, dimensions: ${width}x${height}');
+      if (!exists || fileSize > 50 * 1024 || header[0] != 137 || header[1] != 80 || width != null && width > 96 || height != null && height > 96) {
+        throw Exception('Tray image validation failed: exists=$exists, size=${fileSize / 1024} KB, header=$header, dimensions=${width}x${height}');
+      }
+      return trayPath;
+    } catch (e, st) {
+      print('ERROR: Failed to create tray image: $e\n$st');
+      rethrow;
     }
   }
   

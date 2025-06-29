@@ -156,11 +156,26 @@ class PreviewPage extends StatelessWidget {
                       end: Alignment.bottomRight,
                     ),
                   ),
-                  child: const Icon(
-                    Icons.collections,
-                    color: AppColors.onPrimary,
-                    size: 32,
-                  ),
+                  child: pack.trayImagePath.isNotEmpty && File(pack.trayImagePath).existsSync()
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.file(
+                            File(pack.trayImagePath),
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.broken_image,
+                                color: AppColors.onPrimary,
+                                size: 32,
+                              );
+                            },
+                          ),
+                        )
+                      : const Icon(
+                          Icons.collections,
+                          color: AppColors.onPrimary,
+                          size: 32,
+                        ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

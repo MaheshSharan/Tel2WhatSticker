@@ -11,6 +11,7 @@ import '../datasources/whatsapp_service.dart';
 import '../models/sticker_pack_model.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/error/exceptions.dart';
+import 'package:path_provider/path_provider.dart';
 
 @LazySingleton(as: StickerConverterRepository)
 class StickerConverterRepositoryImpl implements StickerConverterRepository {
@@ -50,10 +51,13 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
         return Left(validationResult.fold((l) => l, (r) => throw Exception()));
       }
       
-      // Create output directory for this pack
-      final outputDir = await _imageProcessingService.getOutputDirectory();
-      final packDir = '$outputDir/pack_${DateTime.now().millisecondsSinceEpoch}';
-      await Directory(packDir).create(recursive: true);
+      // Create the final WhatsApp sticker pack directory using the identifier
+      final appDir = await getApplicationDocumentsDirectory();
+      final identifier = DateTime.now().millisecondsSinceEpoch.toString();
+      final finalPackDir = Directory('${appDir.path}/sticker_packs/$identifier');
+      if (!await finalPackDir.exists()) {
+        await finalPackDir.create(recursive: true);
+      }
       
       // Process images one at a time to reduce memory usage
       final processedStickers = <StickerModel>[];
@@ -87,7 +91,7 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
           }
           
           final fileName = '${i}_sticker.$outputExtension';
-          final outputPath = '$packDir/$fileName';
+          final outputPath = '${finalPackDir.path}/$fileName';
           
           _updateFileProgress(file.path, 0.25);
           
@@ -183,20 +187,39 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
       print('All stickers meet WhatsApp size requirement: ✓ (each < 100KB)');
       print('=====================================\n');
       
-      // Create tray image from first sticker
+      // Create tray image directly in the final sticker pack directory
       final trayPath = await _imageProcessingService.createTrayImage(
         processedStickers.first.imagePath,
-        packDir,
+        finalPackDir.path,
       );
-      
+      // Debug log to confirm tray image exists at the expected location
+      final trayFile = File(trayPath);
+      final trayExists = await trayFile.exists();
+      final traySize = trayExists ? await trayFile.length() : -1;
+      print('DEBUG: Final tray image path: $trayPath, exists: $trayExists, size: ${traySize / 1024} KB');
+      // Log first 16 bytes of tray image
+      if (await trayFile.exists()) {
+        final trayBytes = await trayFile.readAsBytes();
+        final trayHeader = trayBytes.take(16).toList();
+        print('DEBUG: tray.png first 16 bytes: $trayHeader');
+      }
+      // Log first 16 bytes of first sticker file
+      if (processedStickers.isNotEmpty) {
+        final firstStickerFile = File(processedStickers.first.imagePath);
+        if (await firstStickerFile.exists()) {
+          final stickerBytes = await firstStickerFile.readAsBytes();
+          final stickerHeader = stickerBytes.take(16).toList();
+          print('DEBUG: first sticker first 16 bytes: $stickerHeader');
+        }
+      }
       // Create sticker pack with proper animated flag
       final pack = StickerPackModel(
-        identifier: DateTime.now().millisecondsSinceEpoch.toString(),
+        identifier: identifier,
         name: packName,
         publisher: publisher,
         trayImagePath: trayPath,
         stickers: processedStickers,
-        animated: hasAnimatedStickers, // Set the animated flag based on detection
+        animated: hasAnimatedStickers,
       );
       
       _updateProgress(_currentState.copyWith(
@@ -303,10 +326,16 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
         return const Left(TelegramFailure('No stickers could be downloaded'));
       }
       
-      // Create tray image
-      final trayPath = '$packDir/tray.webp';
-      await File(trayPath).create();
-      
+      // Create tray image directly in the final sticker pack directory
+      final trayPath = await _imageProcessingService.createTrayImage(
+        processedStickers.first.imagePath,
+        packDir,
+      );
+      // Debug log to confirm tray image exists at the expected location
+      final trayFile = File(trayPath);
+      final trayExists = await trayFile.exists();
+      final traySize = trayExists ? await trayFile.length() : -1;
+      print('DEBUG: Final tray image path: $trayPath, exists: $trayExists, size: ${traySize / 1024} KB');
       // Create sticker pack
       final pack = StickerPackModel(
         identifier: 'telegram_$packName',

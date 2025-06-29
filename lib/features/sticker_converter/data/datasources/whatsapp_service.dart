@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
 import '../../../../core/error/exceptions.dart';
 import '../models/sticker_pack_model.dart';
+import 'package:image/image.dart' as img;
 
 @injectable
 class WhatsAppService {
@@ -103,20 +104,22 @@ class WhatsAppService {
       // Set the converted stickers
       stickerPack.stickers = webpStickerPaths;
       
-      // Create a proper tray image using simple naming
-      print('DEBUG: Creating tray image from first sticker: ${webpStickerPaths.first}');
-      
-      // Create tray image in the same directory with simple name
-      final firstStickerPath = webpStickerPaths.first;
-      final stickerFile = File(firstStickerPath);
-      final stickerBytes = await stickerFile.readAsBytes();
-      
-      // Save as tray.png in the same directory - simple name
-      final trayImagePath = path.join(stickerPackDir.path, 'tray.png');
+      // Use the tray image path from the StickerPackModel (already optimized and created)
+      final trayImagePath = pack.trayImagePath;
       final trayImageFile = File(trayImagePath);
-      await trayImageFile.writeAsBytes(stickerBytes);
+      final trayImageExists = await trayImageFile.exists();
+      final trayImageSize = trayImageExists ? await trayImageFile.length() : -1;
+      print('DEBUG: Tray image for WhatsApp: $trayImagePath, exists: $trayImageExists, size: ${trayImageSize / 1024} KB');
+      if (!trayImageExists) {
+        throw WhatsAppException('Tray image file does not exist: $trayImagePath');
+      }
+      if (trayImageSize > 50 * 1024) {
+        throw WhatsAppException('Tray image is too large: ${(trayImageSize / 1024).toStringAsFixed(2)} KB');
+      }
       
+      // Only use the trayImagePath from the model, do not forcibly set or fallback
       stickerPack.trayImage = trayImagePath;
+      print('DEBUG: Final tray image path for WhatsApp: ${stickerPack.trayImage}');
       
       // Set animated flag if any stickers are animated
       if (hasAnimatedStickers) {
@@ -136,6 +139,73 @@ class WhatsAppService {
       print('DEBUG: Validating sticker pack');
       StickerPackValidator.validateStickerPack(stickerPack);
       print('DEBUG: Sticker pack validation passed');
+      
+      // Print pack metadata
+      print('DEBUG: PACK METADATA:');
+      print('  Identifier: ${pack.identifier}');
+      print('  Name: ${pack.name}');
+      print('  Publisher: ${pack.publisher}');
+      print('  Tray image: $trayImagePath');
+      print('  Tray image exists: $trayImageExists');
+      print('  Tray image size: ${trayImageSize / 1024} KB');
+      // Print tray image dimensions
+      try {
+        final trayBytes = await trayImageFile.readAsBytes();
+        final trayExt = trayImagePath.toLowerCase().split('.').last;
+        int trayW = -1, trayH = -1;
+        if (trayExt == 'png') {
+          final trayImg = img.decodePng(trayBytes);
+          if (trayImg != null) {
+            trayW = trayImg.width;
+            trayH = trayImg.height;
+          }
+        } else if (trayExt == 'webp') {
+          final trayImg = img.decodeWebP(trayBytes);
+          if (trayImg != null) {
+            trayW = trayImg.width;
+            trayH = trayImg.height;
+          }
+        }
+        print('  Tray image dimensions: ${trayW}x${trayH}');
+      } catch (e) {
+        print('  Tray image dimension check error: $e');
+      }
+      // Print sticker info
+      print('DEBUG: STICKER FILES:');
+      for (final stickerPath in stickerPack.stickers) {
+        final file = File(stickerPath);
+        final exists = await file.exists();
+        final size = exists ? await file.length() : -1;
+        int w = -1, h = -1;
+        if (exists) {
+          try {
+            final bytes = await file.readAsBytes();
+            final ext = stickerPath.toLowerCase().split('.').last;
+            if (ext == 'webp') {
+              final imgObj = img.decodeWebP(bytes);
+              if (imgObj != null) {
+                w = imgObj.width;
+                h = imgObj.height;
+              }
+            } else if (ext == 'png') {
+              final imgObj = img.decodePng(bytes);
+              if (imgObj != null) {
+                w = imgObj.width;
+                h = imgObj.height;
+              }
+            } else if (ext == 'jpg' || ext == 'jpeg') {
+              final imgObj = img.decodeJpg(bytes);
+              if (imgObj != null) {
+                w = imgObj.width;
+                h = imgObj.height;
+              }
+            }
+          } catch (e) {
+            print('  [${stickerPath}] Error decoding image: $e');
+          }
+        }
+        print('  Sticker: $stickerPath | exists: $exists | size: ${size / 1024} KB | dimensions: ${w}x${h}');
+      }
       
       // Add to WhatsApp
       print('DEBUG: Adding sticker pack to WhatsApp');
