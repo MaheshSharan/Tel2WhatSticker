@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
-import 'dart:isolate';
 import 'package:injectable/injectable.dart';
 import 'package:image/image.dart' as img;
 import '../../../../core/constants/app_constants.dart';
@@ -19,6 +18,7 @@ class ImageProcessingService {
     int? targetHeight,
     bool forceStatic = false,
   }) async {
+    print('=== UNIQUE_DEBUG: ENTERED processImageForWhatsApp ===');
     try {
       final file = File(imagePath);
       if (!await file.exists()) {
@@ -40,6 +40,8 @@ class ImageProcessingService {
           return await _processAnimatedGifToWebP(imagePath);
         } else if (extension == 'webp') {
           return await _processAnimatedWebP(imagePath);
+        } else if (extension == 'webm' || extension == 'mp4' || extension == 'tgs') {
+          return await _processVideoToWebP(imagePath);
         }
       }
       
@@ -391,6 +393,10 @@ class ImageProcessingService {
       
       if (extension == 'webp') {
         return await _isAnimatedWebP(imagePath);
+      }
+      
+      if (extension == 'webm' || extension == 'mp4' || extension == 'tgs') {
+        return true; // These are always animated/video formats
       }
       
       // Other formats are not animated
@@ -760,4 +766,314 @@ class ImageProcessingService {
     final extension = filePath.toLowerCase().split('.').last;
     return AppConstants.supportedImageFormats.contains(extension);
   }
+
+  /// Convert WebM/MP4/TGS video files to animated WebP using progressive strategies
+  Future<Uint8List> _processVideoToWebP(String imagePath) async {
+    print('=== UNIQUE_DEBUG: ENTERED _processVideoToWebP ===');
+    try {
+      print('🎬 Converting video file to animated WebP: $imagePath');
+      final file = File(imagePath);
+      if (!await file.exists()) {
+        throw ImageProcessingException('Video file not found: $imagePath');
+      }
+
+      final fileSize = await file.length();
+      final fileSizeKB = fileSize / 1024;
+      print('📊 Input video size: ${fileSizeKB.toStringAsFixed(1)}KB');
+
+      // Validate input file
+      await _validateInputVideoFile(imagePath);
+
+      final outputDir = await getOutputDirectory();
+      final outputPath = p.join(outputDir, '${DateTime.now().millisecondsSinceEpoch}_video_converted.webp');
+
+      // Try progressive conversion strategies
+      final strategies = _getVideoConversionStrategies();
+      
+      for (int i = 0; i < strategies.length; i++) {
+        final strategy = strategies[i];
+        print('🔄 Attempting conversion strategy ${i + 1}/${strategies.length}: ${strategy.name}');
+        
+        try {
+          final webpBytes = await _executeVideoConversion(imagePath, outputPath, strategy);
+          final resultSizeKB = webpBytes.length / 1024;
+          
+          print('✅ Conversion successful with strategy: ${strategy.name}');
+          print('📊 Output size: ${resultSizeKB.toStringAsFixed(1)}KB');
+          
+          if (resultSizeKB <= AppConstants.maxAnimatedFileSizeKB) {
+            return webpBytes;
+          } else {
+            print('⚠️ Output too large (${resultSizeKB.toStringAsFixed(1)}KB > ${AppConstants.maxAnimatedFileSizeKB}KB), trying next strategy...');
+            continue;
+          }
+        } catch (e) {
+          print('❌ Strategy ${strategy.name} failed: $e');
+          if (i == strategies.length - 1) {
+            // Last strategy failed
+            rethrow;
+          }
+          continue;
+        }
+      }
+
+      throw ImageProcessingException('All conversion strategies failed for video file');
+    } catch (e) {
+      print('❌ Error in video to WebP conversion: $e');
+      throw ImageProcessingException('Failed to convert video to WebP: ${e.toString()}');
+    }
+  }
+
+  /// Enhanced validation of input video file properties with codec analysis
+  Future<void> _validateInputVideoFile(String videoPath) async {
+    try {
+      print('🔍 Performing enhanced video file validation...');
+      
+      // Check basic file properties with FFprobe - enhanced with detailed analysis
+      final probeCmd = '-v quiet -print_format json -show_format -show_streams -select_streams v:0 "$videoPath"';
+      final session = await FFmpegKit.execute('ffprobe $probeCmd');
+      final returnCode = await session.getReturnCode();
+      final logs = await session.getAllLogsAsString();
+      
+      if (returnCode == null || !returnCode.isValueSuccess()) {
+        throw ImageProcessingException('FFprobe failed to analyze video file. Return code: $returnCode');
+      }
+      
+      if ((logs?.contains('Invalid data found') ?? false) || (logs?.contains('No such file') ?? false) || (logs?.contains('Permission denied') ?? false)) {
+        throw ImageProcessingException('Invalid, corrupted, or inaccessible video file');
+      }
+
+      // Parse and validate video properties from JSON output
+      try {
+        // Look for basic video properties in the output
+        if (logs?.contains('"codec_type": "video"') ?? false) {
+          print('✅ Video stream detected');
+          
+          // Extract duration if available (for length validation)
+          if (logs?.contains('"duration"') ?? false) {
+            final durationMatch = RegExp(r'"duration": "([^"]+)"').firstMatch(logs ?? '');
+            if (durationMatch != null) {
+              final duration = double.tryParse(durationMatch.group(1) ?? '0') ?? 0;
+              print('📊 Video duration: ${duration.toStringAsFixed(1)}s');
+              
+              // Warn if video is very long (but don't fail)
+              if (duration > 30) {
+                print('⚠️ Warning: Long video detected (${duration.toStringAsFixed(1)}s). Consider trimming for better performance.');
+              }
+            }
+          }
+          
+          // Extract codec information
+          final codecMatch = RegExp(r'"codec_name": "([^"]+)"').firstMatch(logs ?? '');
+          if (codecMatch != null) {
+            final codec = codecMatch.group(1);
+            print('📊 Video codec: $codec');
+            
+            // Log codec-specific information (but don't restrict - FFmpeg can handle most formats)
+            switch (codec?.toLowerCase()) {
+              case 'h264':
+              case 'h265':
+              case 'hevc':
+                print('✅ Common video codec detected');
+                break;
+              case 'vp8':
+              case 'vp9':
+                print('✅ WebM-compatible codec detected');
+                break;
+              default:
+                print('ℹ️ Codec: $codec (FFmpeg will attempt conversion)');
+            }
+          }
+          
+          // Extract resolution information
+          final widthMatch = RegExp(r'"width": (\d+)').firstMatch(logs ?? '');
+          final heightMatch = RegExp(r'"height": (\d+)').firstMatch(logs ?? '');
+          if (widthMatch != null && heightMatch != null) {
+            final width = int.tryParse(widthMatch.group(1) ?? '0') ?? 0;
+            final height = int.tryParse(heightMatch.group(1) ?? '0') ?? 0;
+            print('📊 Video resolution: ${width}x${height}');
+            
+            if (width > 0 && height > 0) {
+              final aspectRatio = width / height;
+              print('📊 Aspect ratio: ${aspectRatio.toStringAsFixed(2)}');
+              
+              // Log resolution category for optimization hints
+              final pixels = width * height;
+              if (pixels > 1920 * 1080) {
+                print('ℹ️ High resolution video - will be scaled down for optimal sticker size');
+              } else if (pixels < 256 * 256) {
+                print('ℹ️ Low resolution video - may benefit from quality preservation');
+              }
+            }
+          }
+        } else {
+          print('⚠️ Warning: No video stream detected in file');
+        }
+      } catch (e) {
+        print('⚠️ Could not parse detailed video properties: $e');
+        // Continue without detailed analysis
+      }
+      
+      print('✅ Enhanced video file validation completed');
+    } catch (e) {
+      print('⚠️ Video validation error: $e');
+      // For Phase 2, we'll be more lenient but still log issues
+      if ((e.toString().contains('Invalid') || e.toString().contains('corrupted') || e.toString().contains('inaccessible'))) {
+        rethrow; // These are critical errors
+      }
+      // Other errors are logged but don't fail the process
+    }
+  }
+
+  /// Get progressive conversion strategies with enhanced fallback quality levels
+  List<VideoConversionStrategy> _getVideoConversionStrategies() {
+    return [
+      // Strategy 1: High quality with optimal settings
+      VideoConversionStrategy(
+        name: 'High Quality',
+        quality: 80,
+        preset: 'picture',
+        scale: AppConstants.stickerSize,
+        lossless: false,
+        additionalFlags: ['-loop', '0', '-an', '-compression_level', '4', '-method', '4'],
+      ),
+      // Strategy 2: Medium quality with balanced settings
+      VideoConversionStrategy(
+        name: 'Medium Quality',
+        quality: 60,
+        preset: 'default',
+        scale: AppConstants.stickerSize,
+        lossless: false,
+        additionalFlags: ['-loop', '0', '-an', '-r', '20', '-compression_level', '6'],
+      ),
+      // Strategy 3: Optimized low quality with smart scaling
+      VideoConversionStrategy(
+        name: 'Low Quality',
+        quality: 40,
+        preset: 'default',
+        scale: AppConstants.stickerSize,
+        lossless: false,
+        additionalFlags: ['-loop', '0', '-an', '-r', '15', '-t', '4', '-compression_level', '6'],
+      ),
+      // Strategy 4: Aggressive compression for problematic files
+      VideoConversionStrategy(
+        name: 'Aggressive Compression',
+        quality: 25,
+        preset: 'default',
+        scale: (AppConstants.stickerSize * 0.8).round(), // Slightly smaller
+        lossless: false,
+        additionalFlags: ['-loop', '0', '-an', '-r', '12', '-t', '3', '-compression_level', '6', '-method', '6'],
+      ),
+      // Strategy 5: Minimal fallback with maximum compression
+      VideoConversionStrategy(
+        name: 'Maximum Compression',
+        quality: 15,
+        preset: 'default',
+        scale: AppConstants.stickerSize ~/ 2, // Half resolution
+        lossless: false,
+        additionalFlags: ['-loop', '0', '-an', '-r', '8', '-t', '2', '-compression_level', '6', '-method', '6', '-pass', '1'],
+      ),
+    ];
+  }
+
+  /// Execute video conversion with specific strategy and enhanced error handling
+  Future<Uint8List> _executeVideoConversion(
+    String inputPath, 
+    String outputPath, 
+    VideoConversionStrategy strategy
+  ) async {
+    print('=== UNIQUE_DEBUG: ENTERED _executeVideoConversion ===');
+    // Use the exact command as the working Windows example
+    final vfFilter = 'fps=15,scale=${strategy.scale}:-1:flags=lanczos';
+    final cmd = [
+      '-y',
+      '-i', '"$inputPath"',
+      '-vf', '"$vfFilter"',
+      '-c:v', 'libwebp',
+      '-loop', '0',
+      '-preset', 'picture',
+      '-an',
+      '-lossless', '0',
+      '"$outputPath"'
+    ].join(' ');
+    print('🔧 [WebM->WebP] FFmpeg command: $cmd');
+    print('🔧 [WebM->WebP] Output path: $outputPath');
+    final session = await FFmpegKit.execute(cmd);
+    final returnCode = await session.getReturnCode();
+    final logs = await session.getAllLogsAsString();
+    print('📋 [WebM->WebP] FFmpeg logs:');
+    print(logs);
+    print('📋 [WebM->WebP] End of FFmpeg logs');
+    if (returnCode == null || !returnCode.isValueSuccess()) {
+      throw ImageProcessingException('FFmpeg conversion failed. Return code: $returnCode. Logs: $logs');
+    }
+    final outputFile = File(outputPath);
+    if (!await outputFile.exists()) {
+      throw ImageProcessingException('FFmpeg did not produce output file: $outputPath');
+    }
+    final webpBytes = await outputFile.readAsBytes();
+    if (webpBytes.isEmpty) {
+      throw ImageProcessingException('Generated WebP file is empty');
+    }
+    if (webpBytes.length >= 12) {
+      final riffSignature = String.fromCharCodes(webpBytes.sublist(0, 4));
+      final webpSignature = String.fromCharCodes(webpBytes.sublist(8, 12));
+      if (riffSignature != 'RIFF' || webpSignature != 'WEBP') {
+        print('⚠️ [WebM->WebP] Output file may not be a valid WebP format');
+      } else {
+        print('✅ [WebM->WebP] Valid WebP format confirmed');
+      }
+    }
+    print('✅ [WebM->WebP] Conversion completed successfully');
+    print('📊 [WebM->WebP] Output size: [1m${(webpBytes.length / 1024).toStringAsFixed(1)}KB[0m');
+    return webpBytes;
+  }
+
+  /// Convert Telegram WebM to animated WebP using the working FFmpeg command
+  Future<void> convertTelegramWebmToWebp(String webmPath, String webpFileName) async {
+    final downloadsPath = await getDownloadsDirectoryPath();
+    // Only use the file name, not the full path
+    final fileName = p.basename(webpFileName); // ensures only the file name is used
+    final webpPath = '$downloadsPath/$fileName';
+    print('DEBUG: Saving converted WebP to: $webpPath');
+    final ffmpegCommand = '-y -i "$webmPath" -vf "fps=15,scale=512:-1:flags=lanczos" -c:v libwebp -loop 0 -preset picture -an -lossless 0 "$webpPath"';
+    print('DEBUG: ffmpeg command: $ffmpegCommand');
+    final session = await FFmpegKit.executeAsync(
+      ffmpegCommand,
+      (session) async {
+        final returnCode = await session.getReturnCode();
+        print('DEBUG: ffmpeg session completed with return code: $returnCode');
+      },
+      (log) {
+        print('DEBUG: ffmpeg log: \\n${log.getMessage()}');
+      },
+      (statistics) {},
+    );
+    // Print the path for preview and check if it matches
+    print('DEBUG: Preview should load from: $webpPath');
+  }
+
+  Future<String> getDownloadsDirectoryPath() async {
+    // This will work for Android, returns /storage/emulated/0/Download
+    final directory = Directory('/storage/emulated/0/Download');
+    return directory.path;
+  }
+}
+
+class VideoConversionStrategy {
+  final String name;
+  final int quality;
+  final String preset;
+  final int scale;
+  final bool lossless;
+  final List<String> additionalFlags;
+
+  VideoConversionStrategy({
+    required this.name,
+    required this.quality,
+    required this.preset,
+    required this.scale,
+    required this.lossless,
+    this.additionalFlags = const [],
+  });
 }

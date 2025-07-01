@@ -2,12 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/feature_card.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/theme/app_icons.dart';
 import '../../../../core/router/app_router.dart';
-import '../../../../core/theme/app_text_styles.dart';
-import '../../../../core/constants/app_constants.dart';
 import '../bloc/sticker_converter_bloc.dart';
 import '../bloc/sticker_converter_event.dart';
 import '../bloc/sticker_converter_state.dart';
@@ -96,13 +93,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 SliverToBoxAdapter(
                   child: Column(
                     children: [
+                      const SizedBox(height: 20), // Reduced from 40
                       _buildHeader(),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 24), // Reduced from 40
                       _buildFeatureCards(),
-                      const SizedBox(height: 40),
-                      _buildWhatsAppStatus(),
-                      const SizedBox(height: 32),
-                      _buildInfoSection(),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -135,6 +129,84 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         ),
       ),
       actions: [
+        // WhatsApp Status Indicator
+        BlocBuilder<StickerConverterBloc, StickerConverterState>(
+          builder: (context, state) {
+            final isInstalled = state.maybeWhen(
+              (isLoading, isWhatsAppInstalled, isProcessing, currentPack, processingProgress, validatedFiles, extractedDirectory, error, successMessage) => isWhatsAppInstalled,
+              whatsAppCheckCompleted: (isInstalled) => isInstalled,
+              orElse: () => false,
+            );
+
+            final isChecking = state.maybeWhen(
+              (isLoading, isWhatsAppInstalled, isProcessing, currentPack, processingProgress, validatedFiles, extractedDirectory, error, successMessage) => isLoading,
+              orElse: () => false,
+            );
+
+            return Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // WhatsApp Status Icon
+                  GestureDetector(
+                    onTap: () => _showWhatsAppStatusBottomSheet(context, isInstalled),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.surface.withOpacity(0.8),
+                        border: Border.all(
+                          color: isInstalled 
+                              ? AppColors.success.withOpacity(0.5)
+                              : AppColors.warning.withOpacity(0.5),
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        isInstalled ? Icons.check_circle : Icons.warning,
+                        color: isInstalled ? AppColors.success : AppColors.warning,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Refresh Button
+                  GestureDetector(
+                    onTap: isChecking ? null : _checkWhatsAppInstallation,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        color: AppColors.surface.withOpacity(0.8),
+                        border: Border.all(
+                          color: AppColors.outline.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: isChecking
+                          ? SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.primary,
+                                ),
+                              ),
+                            )
+                          : Icon(
+                              Icons.refresh,
+                              color: AppColors.onSurfaceVariant,
+                              size: 20,
+                            ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
         Padding(
           padding: const EdgeInsets.only(right: 16.0),
           child: IconButton(
@@ -156,20 +228,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: SlideTransition(
         position: _slideAnimation,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16), // Reduced from 32
           child: Column(
             children: [
-              // Modern gradient icon
+              // Modern logo container
               Container(
-                width: 80,
-                height: 80,
+                width: 70, // Reduced from 80
+                height: 70, // Reduced from 80
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  gradient: LinearGradient(
-                    colors: AppColors.primaryGradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  borderRadius: BorderRadius.circular(20), // Reduced from 24
                   boxShadow: [
                     BoxShadow(
                       color: AppColors.primary.withOpacity(0.4),
@@ -179,13 +246,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.auto_fix_high_rounded,
-                  size: 40,
-                  color: Colors.white,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20), // Reduced from 24
+                  child: Image.asset(
+                    'assets/images/logos/logo_splash.png',
+                    width: 70, // Reduced from 80
+                    height: 70, // Reduced from 80
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 20), // Reduced from 32
               // Single modern heading
               ShaderMask(
                 shaderCallback: (bounds) => LinearGradient(
@@ -196,7 +267,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 child: Text(
                   'Sticker Converter',
                   style: GoogleFonts.inter(
-                    fontSize: 36,
+                    fontSize: 32, // Reduced from 36
                     fontWeight: FontWeight.w900,
                     height: 1.1,
                     letterSpacing: -1.0,
@@ -205,11 +276,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   textAlign: TextAlign.center,
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12), // Reduced from 16
               Text(
                 'Transform Telegram stickers into WhatsApp format\nwith professional quality and ease',
                 style: GoogleFonts.inter(
-                  fontSize: 16,
+                  fontSize: 15, // Reduced from 16
                   fontWeight: FontWeight.w400,
                   height: 1.5,
                   color: AppColors.onSurfaceVariant,
@@ -376,262 +447,198 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
   
-  Widget _buildWhatsAppStatus() {
-    return BlocBuilder<StickerConverterBloc, StickerConverterState>(
-      builder: (context, state) {
-        final isInstalled = state.maybeWhen(
-          (isLoading, isWhatsAppInstalled, isProcessing, currentPack, processingProgress, validatedFiles, extractedDirectory, error, successMessage) => isWhatsAppInstalled,
-          whatsAppCheckCompleted: (isInstalled) => isInstalled,
-          orElse: () => false,
-        );
-
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          child: FadeTransition(
-            opacity: _fadeAnimation,
-            child: Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  colors: [
-                    AppColors.surface,
-                    AppColors.surface.withOpacity(0.8),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                border: Border.all(
-                  color: isInstalled 
-                      ? AppColors.success.withOpacity(0.3)
-                      : AppColors.warning.withOpacity(0.3),
-                  width: 1,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: (isInstalled ? AppColors.success : AppColors.warning).withOpacity(0.1),
-                    blurRadius: 20,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 56,
-                    height: 56,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(16),
-                      color: (isInstalled ? AppColors.success : AppColors.warning).withOpacity(0.1),
-                    ),
-                    child: Icon(
-                      isInstalled ? Icons.check_circle_rounded : Icons.warning_rounded,
-                      color: isInstalled ? AppColors.success : AppColors.warning,
-                      size: 28,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'WhatsApp Status',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.onSurface,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          state.maybeWhen(
-                            (isLoading, isWhatsAppInstalled, isProcessing, currentPack, processingProgress, validatedFiles, extractedDirectory, error, successMessage) => 
-                                isWhatsAppInstalled
-                                    ? 'Ready to create sticker packs'
-                                    : 'Please install WhatsApp',
-                            whatsAppCheckCompleted: (isInstalled) =>
-                                isInstalled
-                                    ? 'Ready to create sticker packs'
-                                    : 'Please install WhatsApp',
-                            orElse: () => 'Checking installation...',
-                          ),
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w400,
-                            color: AppColors.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!isInstalled)
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        color: AppColors.warning.withOpacity(0.1),
-                      ),
-                      child: Text(
-                        'Install',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.warning,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-  
-  Widget _buildInfoSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: FadeTransition(
-        opacity: _fadeAnimation,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              colors: [
-                AppColors.surface,
-                AppColors.surface.withOpacity(0.8),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            border: Border.all(
-              color: AppColors.outline.withOpacity(0.2),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      color: AppColors.info.withOpacity(0.1),
-                    ),
-                    child: Icon(
-                      Icons.lightbulb_outline_rounded,
-                      color: AppColors.info,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'How it works',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.onSurface,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              ..._buildInfoSteps(),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-  
-  List<Widget> _buildInfoSteps() {
-    final steps = [
-      'Choose your input method',
-      'Configure your sticker pack',
-      'Process and optimize',
-      'Add to WhatsApp instantly',
-    ];
-    
-    return steps.asMap().entries.map((entry) {
-      final index = entry.key;
-      final step = entry.value;
-      
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 16),
-        child: Row(
-          children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: LinearGradient(
-                  colors: AppColors.primaryGradient,
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '${index + 1}',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                step,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.onSurface,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    }).toList();
-  }
-  
   void _showInfoDialog() {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('About this app'),
-        content: const Text(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          'About this app',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: AppColors.onSurface,
+          ),
+        ),
+        content: Text(
           'This app helps you convert images and Telegram sticker packs '
           'to WhatsApp format. All processing is done locally on your device '
           'for privacy and speed.',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            color: AppColors.onSurfaceVariant,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Got it'),
+            child: Text(
+              'Got it',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primary,
+              ),
+            ),
           ),
         ],
       ),
     );
   }
-  
-  void _openWhatsAppDownload() {
-    // In a real app, open the app store or play store
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Please install WhatsApp from your app store'),
+
+  void _showWhatsAppStatusBottomSheet(BuildContext context, bool isInstalled) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.outline.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            // Status Icon
+            Container(
+              width: 60,
+              height: 60,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                color: (isInstalled ? AppColors.success : AppColors.warning).withOpacity(0.1),
+              ),
+              child: Icon(
+                isInstalled ? Icons.check_circle : Icons.warning,
+                color: isInstalled ? AppColors.success : AppColors.warning,
+                size: 32,
+              ),
+            ),
+            const SizedBox(height: 16),
+            // Title
+            Text(
+              isInstalled ? 'WhatsApp Ready!' : 'WhatsApp Not Found',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppColors.onSurface,
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Description
+            Text(
+              isInstalled
+                  ? 'WhatsApp is installed and ready to receive sticker packs.'
+                  : 'Please install WhatsApp to use sticker packs.',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w400,
+                color: AppColors.onSurfaceVariant,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            // Action buttons
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                          color: AppColors.outline.withOpacity(0.3),
+                        ),
+                      ),
+                    ),
+                    child: Text(
+                      'Close',
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                ),
+                if (!isInstalled) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        _openWhatsAppDownload();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        backgroundColor: AppColors.warning,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: Text(
+                        'Install WhatsApp',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            // Safe area padding
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
       ),
     );
   }
+
+  Future<void> _openWhatsAppDownload() async {
+    try {
+      // Try to open Google Play Store
+      const playStoreUrl = 'https://play.google.com/store/apps/details?id=com.whatsapp';
+      if (await canLaunchUrl(Uri.parse(playStoreUrl))) {
+        await launchUrl(
+          Uri.parse(playStoreUrl),
+          mode: LaunchMode.externalApplication,
+        );
+      } else {
+        // Fallback to web browser
+        await launchUrl(
+          Uri.parse(playStoreUrl),
+          mode: LaunchMode.platformDefault,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text('Please install WhatsApp from your app store'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+      }
+    }
+  }
 }
+

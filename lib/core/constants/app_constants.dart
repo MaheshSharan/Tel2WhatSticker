@@ -38,4 +38,7 @@ class AppConstants {
   // Success Messages
   static const String stickerPackAddedMessage = 'Sticker pack added to WhatsApp successfully!';
   static const String processingCompleteMessage = 'All stickers processed successfully';
+  
+  // Telegram Bot Token
+  static const String telegramBotToken = '8023270823:AAGmykplStYTEen0TupqLZ6JLCRcxeOkAPc';
 }

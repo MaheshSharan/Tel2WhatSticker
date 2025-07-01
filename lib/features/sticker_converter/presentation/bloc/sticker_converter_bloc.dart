@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import '../../domain/usecases/process_images_usecase.dart';
@@ -35,6 +36,8 @@ class StickerConverterBloc extends Bloc<StickerConverterEvent, StickerConverterS
     on<ExtractZipFileEvent>(_onExtractZipFile);
     on<ResetStateEvent>(_onResetState);
     on<UpdateProgressEvent>(_onUpdateProgress);
+    on<FetchTelegramPackMetadataEvent>(_onFetchTelegramPackMetadata);
+    on<DownloadTelegramStickersEvent>(_onDownloadTelegramStickers);
     
     // Listen to processing progress
     _progressSubscription = _repository.getProcessingProgress().listen(
@@ -192,6 +195,54 @@ class StickerConverterBloc extends Bloc<StickerConverterEvent, StickerConverterS
     ));
   }
   
+  Future<void> _onFetchTelegramPackMetadata(
+    FetchTelegramPackMetadataEvent event,
+    Emitter<StickerConverterState> emit,
+  ) async {
+    emit(const StickerConverterState.loading());
+    final result = await _repository.fetchTelegramPackMetadata(event.url);
+    result.fold(
+      (failure) => emit(StickerConverterState.error(message: failure.message)),
+      (metadata) => emit(StickerConverterState.telegramPackMetadataLoaded(metadata: metadata)),
+    );
+  }
+  
+  Future<void> _onDownloadTelegramStickers(
+    DownloadTelegramStickersEvent event,
+    Emitter<StickerConverterState> emit,
+  ) async {
+    emit(const StickerConverterState.loading());
+    
+    final result = await _repository.downloadTelegramStickersWithProgress(
+      event.url,
+      onProgress: (currentIndex, totalStickers, currentUrl, downloadedFiles, allStickers) {
+        emit(StickerConverterState.telegramStickerDownloadProgress(
+          currentIndex: currentIndex,
+          totalStickers: totalStickers,
+          currentStickerUrl: currentUrl,
+          downloadedFiles: downloadedFiles,
+          allStickers: allStickers,
+        ));
+      },
+    );
+    
+    result.fold(
+      (failure) => emit(StickerConverterState.error(message: failure.message)),
+      (data) {
+        final files = data['files'] as List<File>;
+        final filePaths = files.map((f) => f.path).toList();
+        final packName = data['pack_name'] as String;
+        final packTitle = data['title'] as String;
+        
+        emit(StickerConverterState.telegramStickersDownloaded(
+          filePaths: filePaths,
+          packName: packName,
+          packTitle: packTitle,
+        ));
+      },
+    );
+  }
+
   @override
   Future<void> close() {
     _progressSubscription?.cancel();

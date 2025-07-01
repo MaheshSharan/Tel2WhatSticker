@@ -1,11 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:file_picker/file_picker.dart';
 import '../../../../core/router/app_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_text_styles.dart';
+import '../../../../core/constants/app_constants.dart';
 import '../../domain/entities/sticker_pack_entity.dart';
 import '../bloc/sticker_converter_bloc.dart';
 import '../bloc/sticker_converter_event.dart';
@@ -36,6 +38,16 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
   List<File> _selectedFiles = [];
   String _currentInputType = 'images';
   
+  // Telegram-related state - simplified for unified approach
+  bool _telegramMetadataLoading = false;
+  String? _telegramPackError;
+  
+  // Telegram download progress tracking
+  List<Map<String, dynamic>> _telegramStickers = [];
+  int _telegramCurrentIndex = 0;
+  int _telegramTotalStickers = 0;
+  bool _isTelegramDownloading = false;
+  
   @override
   void initState() {
     super.initState();
@@ -46,15 +58,23 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
       initialIndex: _getInitialTabIndex(),
     );
     
-    _packNameController.text = 'My Sticker Pack';
-    _publisherController.text = 'Sticker Creator';
+    // Don't set default text - let users enter their own
     
     _tabController.addListener(() {
       setState(() {
         _currentInputType = _getInputTypeFromIndex(_tabController.index);
         _selectedFiles.clear();
+        // Clear Telegram state when switching tabs
+        _telegramMetadataLoading = false;
+        _telegramPackError = null;
+        _isTelegramDownloading = false;
+        _telegramStickers.clear();
+        _telegramCurrentIndex = 0;
+        _telegramTotalStickers = 0;
       });
     });
+
+    _telegramUrlController.addListener(_onTelegramUrlChanged);
   }
   
   int _getInitialTabIndex() {
@@ -84,8 +104,37 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
     _tabController.dispose();
     _packNameController.dispose();
     _publisherController.dispose();
+    _telegramUrlController.removeListener(_onTelegramUrlChanged);
     _telegramUrlController.dispose();
     super.dispose();
+  }
+
+  void _onTelegramUrlChanged() {
+    final url = _telegramUrlController.text.trim();
+    if (url.isNotEmpty) {
+      setState(() {
+        _telegramMetadataLoading = true;
+        _telegramPackError = null;
+        _isTelegramDownloading = false;
+        _telegramStickers.clear();
+        _telegramCurrentIndex = 0;
+        _telegramTotalStickers = 0;
+        _selectedFiles.clear(); // Clear any existing files
+      });
+      context.read<StickerConverterBloc>().add(
+        StickerConverterEvent.downloadTelegramStickers(url: url),
+      );
+    } else {
+      setState(() {
+        _telegramMetadataLoading = false;
+        _telegramPackError = null;
+        _isTelegramDownloading = false;
+        _telegramStickers.clear();
+        _telegramCurrentIndex = 0;
+        _telegramTotalStickers = 0;
+        _selectedFiles.clear();
+      });
+    }
   }
 
   @override
@@ -103,43 +152,55 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
                   _selectedFiles = validatedFiles.map((path) => File(path)).toList();
                 });
               }
-              
-              // Handle extracted directory
-              if (extractedDirectory != null && extractedDirectory.isNotEmpty) {
-                _scanExtractedDirectory(extractedDirectory);
-              }
-              
-              // Show error if any
-              if (error != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(error),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              }
-              
-              // Show success message
-              if (successMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(successMessage),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              }
-            },
+                 // Handle extracted directory
+            if (extractedDirectory != null && extractedDirectory.isNotEmpty) {
+              _scanExtractedDirectory(extractedDirectory);
+            }
             
-            // Specific states
-            initial: () {},
-            loading: () {},
-            processing: (progress) {
-              // Show processing feedback if needed
-              if (progress.status == ProcessingStatus.processing) {
-                // Could add a snackbar or other UI feedback here
-                print('Processing stickers: ${progress.completedFiles}/${progress.totalFiles}');
-              }
-            },
+            // Show error if any
+            if (error != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(error),
+                  backgroundColor: AppColors.error,
+                ),
+              );
+            }
+            
+            // Show success message
+            if (successMessage != null) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(successMessage),
+                  backgroundColor: AppColors.success,
+                ),
+              );
+            }
+          },
+          
+          // Handle Telegram stickers downloaded
+          telegramStickersDownloaded: (filePaths, packName, packTitle) {
+            setState(() {
+              _telegramMetadataLoading = false;
+              _telegramPackError = null;
+              _isTelegramDownloading = false;
+              _selectedFiles = filePaths.map((path) => File(path)).toList();
+              
+              // Auto-fill pack details
+              _packNameController.text = packTitle.isNotEmpty ? packTitle : packName;
+              _publisherController.text = 'Telegram';
+            });
+          },
+          
+          // Specific states
+          initial: () {},
+          loading: () {},
+          processing: (progress) {
+            // Show processing feedback if needed
+            if (progress.status == ProcessingStatus.processing) {
+              print('Processing stickers: ${progress.completedFiles}/${progress.totalFiles}');
+            }
+          },
             processCompleted: (pack) {
               // Navigate to preview page with the created pack
               context.go(AppRouter.preview, extra: {
@@ -185,8 +246,24 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
                   backgroundColor: AppColors.success,
                 ),
               );
-            },
-          );
+            },          telegramPackMetadataLoaded: (metadata) {
+            // Handle telegram pack metadata loaded if needed
+            // This is called when metadata is loaded but before stickers are downloaded
+          },
+          telegramStickerDownloadProgress: (currentIndex, totalStickers, currentUrl, downloadedFiles, allStickers) {
+            setState(() {
+              _isTelegramDownloading = true;
+              _telegramCurrentIndex = currentIndex;
+              _telegramTotalStickers = totalStickers;
+              _telegramStickers = List<Map<String, dynamic>>.from(allStickers);
+              
+              // Update selected files as downloads complete
+              if (downloadedFiles.isNotEmpty) {
+                _selectedFiles = downloadedFiles.map((path) => File(path)).toList();
+              }
+            });
+          },
+        );
         },
         child: GradientBackground(
           child: Column(
@@ -367,23 +444,50 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
   
   Widget _buildTelegramUrlTab() {
     return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
       child: Column(
         children: [
           TelegramUrlInput(
             controller: _telegramUrlController,
-            onUrlChanged: _validateTelegramUrl,
+            onUrlChanged: (_) {},
           ),
-          if (_telegramUrlController.text.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-              child: _buildPackConfiguration(),
+          
+          if (_telegramMetadataLoading && !_isTelegramDownloading)
+            const Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(child: CircularProgressIndicator()),
             ),
+            
+          if (_telegramPackError != null)
+            Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                _telegramPackError!,
+                style: TextStyle(color: AppColors.error),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          
+          // Show Telegram download progress grid
+          if (_isTelegramDownloading && _telegramStickers.isNotEmpty) ...[
+            const SizedBox(height: 24),
+            _buildTelegramProgressGrid(),
+          ]
+          // Show final sticker selection once download is complete  
+          else if (_selectedFiles.isNotEmpty && !_isTelegramDownloading) ...[
+            const SizedBox(height: 24),
+            _buildTelegramStickerSelection(),
+          ],
+          
+          if (_selectedFiles.isNotEmpty || _isTelegramDownloading) ...[
+            const SizedBox(height: 24),
+            _buildPackConfiguration(),
           ],
         ],
       ),
     );
   }
-  
+  // Unified ZIP upload tab
   Widget _buildZipUploadTab() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
@@ -432,17 +536,31 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
           const SizedBox(height: 20),
           TextField(
             controller: _packNameController,
+            inputFormatters: [
+              FilteringTextInputFormatter.deny(
+                RegExp(r'[\u{1f600}-\u{1f64f}]|[\u{1f300}-\u{1f5ff}]|[\u{1f680}-\u{1f6ff}]|[\u{1f1e0}-\u{1f1ff}]|[\u{2600}-\u{26ff}]|[\u{2700}-\u{27bf}]', unicode: true),
+              ),
+            ],
+            maxLength: 128,
             decoration: const InputDecoration(
               labelText: 'Pack Name',
-              hintText: 'e.g., My Awesome Stickers',
+              hintText: 'Enter pack name (no emojis)',
+              counterText: '',
             ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _publisherController,
+            inputFormatters: [
+              FilteringTextInputFormatter.deny(
+                RegExp(r'[\u{1f600}-\u{1f64f}]|[\u{1f300}-\u{1f5ff}]|[\u{1f680}-\u{1f6ff}]|[\u{1f1e0}-\u{1f1ff}]|[\u{2600}-\u{26ff}]|[\u{2700}-\u{27bf}]', unicode: true),
+              ),
+            ],
+            maxLength: 128,
             decoration: const InputDecoration(
               labelText: 'Publisher',
-              hintText: 'e.g., Your Name',
+              hintText: 'Enter publisher name (no emojis)',
+              counterText: '',
             ),
           ),
         ],
@@ -466,11 +584,21 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
       ),
       child: BlocBuilder<StickerConverterBloc, StickerConverterState>(
         builder: (context, state) {
-          final isLoading = state.maybeWhen(
+          final isLoading = state.when(
             (isLoading, isWhatsAppInstalled, isProcessing, currentPack, processingProgress, validatedFiles, extractedDirectory, error, successMessage) => isLoading || isProcessing,
+            initial: () => false,
             loading: () => true,
             processing: (progress) => true,
-            orElse: () => false,
+            processCompleted: (pack) => false,
+            whatsAppCheckCompleted: (isInstalled) => false,
+            addedToWhatsApp: (pack) => false,
+            filesValidated: (validFiles) => false,
+            zipExtracted: (directory, extractedCount, totalCount) => false,
+            error: (message) => false,
+            success: (message, pack) => false,
+            telegramPackMetadataLoaded: (metadata) => false,
+            telegramStickersDownloaded: (filePaths, packName, packTitle) => false,
+            telegramStickerDownloadProgress: (currentIndex, totalStickers, currentUrl, downloadedFiles, allStickers) => true,
           );
           
           return SizedBox(
@@ -592,10 +720,6 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
     });
   }
   
-  void _validateTelegramUrl(String url) {
-    // Real-time validation can be added here
-  }
-  
   void _scanExtractedDirectory(String directory) async {
     try {
       print('Scanning extracted directory: $directory');
@@ -702,8 +826,9 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
   bool _canProceed() {
     switch (_currentInputType) {
       case 'telegram':
-        return _telegramUrlController.text.isNotEmpty &&
-            _packNameController.text.isNotEmpty;
+        return _selectedFiles.isNotEmpty &&
+            _packNameController.text.isNotEmpty &&
+            !_telegramMetadataLoading;
       case 'images':
       case 'zip':
         return _selectedFiles.isNotEmpty &&
@@ -714,26 +839,231 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
   }
   
   void _handleProceed() {
-    switch (_currentInputType) {
-      case 'telegram':
-        context.read<StickerConverterBloc>().add(
-          StickerConverterEvent.processTelegramUrl(
-            url: _telegramUrlController.text,
-            customPackName: _packNameController.text,
-            customPublisher: _publisherController.text,
+    // All upload types now use the same unified approach
+    context.read<StickerConverterBloc>().add(
+      StickerConverterEvent.processImages(
+        images: _selectedFiles,
+        packName: _packNameController.text,
+        publisher: _publisherController.text,
+      ),
+    );
+  }
+
+  Widget _buildTelegramProgressGrid() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outline.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Downloading Stickers',
+                style: AppTextStyles.h6.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_telegramCurrentIndex}/${_telegramTotalStickers}',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
-        );
-        break;
-      case 'images':
-      case 'zip':
-        context.read<StickerConverterBloc>().add(
-          StickerConverterEvent.processImages(
-            images: _selectedFiles,
-            packName: _packNameController.text,
-            publisher: _publisherController.text,
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: _telegramTotalStickers > 0 ? _telegramCurrentIndex / _telegramTotalStickers : 0,
+            backgroundColor: AppColors.outline.withOpacity(0.3),
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
           ),
-        );
-        break;
-    }
+          const SizedBox(height: 20),
+          
+          // Grid of sticker progress indicators
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 5,
+              childAspectRatio: 1,
+              crossAxisSpacing: 8,
+              mainAxisSpacing: 8,
+            ),
+            itemCount: _telegramStickers.length,
+            itemBuilder: (context, index) {
+              final sticker = _telegramStickers[index];
+              final status = sticker['status'] as String;
+              final progress = sticker['progress'] as double;
+              final localPath = sticker['local_path'] as String?;
+              
+              return Container(
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: status == 'completed' 
+                      ? AppColors.success 
+                      : status == 'downloading'
+                        ? AppColors.primary
+                        : status == 'error'
+                          ? AppColors.error
+                          : AppColors.outline.withOpacity(0.3),
+                    width: 2,
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    // Sticker preview if available
+                    if (localPath != null && status == 'completed')
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: Image.file(
+                          File(localPath),
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: AppColors.surfaceVariant,
+                              child: Icon(
+                                Icons.image_not_supported,
+                                color: AppColors.onSurfaceVariant,
+                                size: 20,
+                              ),
+                            );
+                          },
+                        ),
+                      )
+                    else
+                      Container(
+                        color: AppColors.surfaceVariant.withOpacity(0.3),
+                        child: Center(
+                          child: Icon(
+                            Icons.image,
+                            color: AppColors.onSurfaceVariant.withOpacity(0.5),
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    
+                    // Progress overlay
+                    if (status == 'downloading')
+                      Container(
+                        decoration: BoxDecoration(
+                          color: AppColors.surface.withOpacity(0.8),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Center(
+                          child: SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                              value: progress,
+                              strokeWidth: 3,
+                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                            ),
+                          ),
+                        ),
+                      ),
+                    
+                    // Status indicator
+                    Positioned(
+                      top: 4,
+                      right: 4,
+                      child: Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: status == 'completed' 
+                            ? AppColors.success 
+                            : status == 'downloading'
+                              ? AppColors.primary
+                              : status == 'error'
+                                ? AppColors.error
+                                : AppColors.outline.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          status == 'completed' 
+                            ? Icons.check 
+                            : status == 'error'
+                              ? Icons.close
+                              : null,
+                          size: 10,
+                          color: AppColors.onPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTelegramStickerSelection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.surface.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.outline.withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(
+                'Select Stickers',
+                style: AppTextStyles.h6.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.onSurface,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                '${_selectedFiles.length}/${AppConstants.maxStickersInPack} selected',
+                style: AppTextStyles.bodyMedium.copyWith(
+                  color: AppColors.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'First ${AppConstants.maxStickersInPack} stickers are selected by default. Tap to toggle selection.',
+            style: AppTextStyles.bodySmall.copyWith(
+              color: AppColors.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 20),
+          
+          // Use the existing SelectedFilesList widget with some modifications
+          SelectedFilesList(
+            files: _selectedFiles,
+            onRemoveFile: _removeFile,
+            onAddMore: () {
+              // For Telegram, we don't allow adding more files manually
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('To add more stickers, use a different Telegram pack URL'),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
   }
 }

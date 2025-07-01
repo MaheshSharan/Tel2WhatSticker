@@ -55,4 +55,24 @@ class StickerConverterState with _$StickerConverterState {
     required String message,
     StickerPackEntity? pack,
   }) = StickerConverterSuccessState;
+  
+  const factory StickerConverterState.telegramPackMetadataLoaded({
+    required Map<String, dynamic> metadata,
+  }) = StickerConverterTelegramPackMetadataLoadedState;
+  
+  // New state for downloaded Telegram stickers
+  const factory StickerConverterState.telegramStickersDownloaded({
+    required List<String> filePaths,
+    required String packName,
+    required String packTitle,
+  }) = StickerConverterTelegramStickersDownloadedState;
+  
+  // New state for individual Telegram sticker download progress
+  const factory StickerConverterState.telegramStickerDownloadProgress({
+    required int currentIndex,
+    required int totalStickers,
+    required String currentStickerUrl,
+    required List<String> downloadedFiles,
+    required List<Map<String, dynamic>> allStickers,
+  }) = StickerConverterTelegramStickerDownloadProgressState;
 }

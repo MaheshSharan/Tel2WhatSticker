@@ -40,6 +40,7 @@ dependencies:
   freezed_annotation: ^2.4.1
   json_annotation: ^4.8.1
   path: ^1.9.0
+  url_launcher: ^6.2.1
   
   # UI/UX
   google_fonts: ^6.1.0
@@ -63,12 +64,14 @@ dev_dependencies:
   freezed: ^2.4.6
   json_serializable: ^6.7.1
   mockito: ^5.4.2
+  flutter_launcher_icons: ^0.14.1
 
 flutter:
   uses-material-design: true
   
   assets:
     - assets/images/
+    - assets/images/logos/
     - assets/animations/
     - assets/icons/
 
@@ -102,3 +105,13 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+# Flutter Launcher Icons Configuration
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: "assets/images/logos/app_icon.png"
+  min_sdk_android: 21
+  adaptive_icon_background: "#0A0A0A"
+  adaptive_icon_foreground: "assets/images/logos/app_icon.png"
+  remove_alpha_ios: true

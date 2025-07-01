@@ -101,8 +101,6 @@ class _TelegramUrlInputState extends State<TelegramUrlInput>
           _buildUrlInput(),
           const SizedBox(height: 16),
           _buildValidationInfo(),
-          const SizedBox(height: 32),
-          _buildExampleUrls(),
         ],
       ),
     );
@@ -237,25 +235,6 @@ class _TelegramUrlInputState extends State<TelegramUrlInput>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildExampleUrls() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Examples',
-          style: AppTextStyles.labelLarge.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppColors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _buildExampleUrl('https://t.me/addstickers/example_pack'),
-        const SizedBox(height: 8),
-        _buildExampleUrl('https://t.me/addstickers/cute_animals'),
-      ],
     );
   }
 

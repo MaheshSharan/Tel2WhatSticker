@@ -13,11 +13,7 @@ class TelegramApiService {
   
   Future<Map<String, dynamic>> getStickerPackInfo(String packName) async {
     try {
-      // This is a simplified implementation
-      // In a real app, you would need to handle Telegram's API authentication
-      // and use proper endpoints
-      
-      final url = '${AppConstants.telegramApiBaseUrl}/bot<BOT_TOKEN>/getStickerSet';
+      final url = '${AppConstants.telegramApiBaseUrl}/bot${AppConstants.telegramBotToken}/getStickerSet';
       final response = await _dio.post(url, data: {
         'name': packName,
       });
@@ -38,10 +34,10 @@ class TelegramApiService {
     required String fileId,
     required String fileName,
   }) async {
+    print('=== UNIQUE_DEBUG: ENTERED Telegram API Service ===');
     try {
-      // Get file path from Telegram
       final fileResponse = await _dio.post(
-        '${AppConstants.telegramApiBaseUrl}/bot<BOT_TOKEN>/getFile',
+        '${AppConstants.telegramApiBaseUrl}/bot${AppConstants.telegramBotToken}/getFile',
         data: {'file_id': fileId},
       );
       
@@ -50,7 +46,7 @@ class TelegramApiService {
       }
       
       final filePath = fileResponse.data['result']['file_path'];
-      final downloadUrl = 'https://api.telegram.org/file/bot<BOT_TOKEN>/$filePath';
+      final downloadUrl = 'https://api.telegram.org/file/bot${AppConstants.telegramBotToken}/$filePath';
       
       // Download file
       final appDir = await getApplicationDocumentsDirectory();
@@ -106,19 +102,4 @@ class TelegramApiService {
   // 3. Implement proper authentication
   // 4. Handle different sticker formats (static/animated)
   // 5. Parse sticker metadata (emojis, etc.)
-  
-  Future<List<Map<String, dynamic>>> mockGetStickerPack(String packName) async {
-    // Mock implementation for development
-    // In production, replace with actual Telegram API calls
-    
-    await Future.delayed(const Duration(seconds: 2)); // Simulate network delay
-    
-    return List.generate(5, (index) => {
-      'file_id': 'mock_file_id_$index',
-      'emoji': '😀',
-      'width': 512,
-      'height': 512,
-      'file_size': 50000,
-    });
-  }
 }

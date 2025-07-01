@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../features/splash/presentation/pages/splash_page.dart';
 import '../../features/sticker_converter/presentation/pages/home_page.dart';
 import '../../features/sticker_converter/presentation/pages/upload_page.dart';
 import '../../features/sticker_converter/presentation/pages/preview_page.dart';
@@ -7,15 +8,21 @@ import '../../features/sticker_converter/presentation/pages/processing_page.dart
 import '../../features/sticker_converter/presentation/pages/success_page.dart';
 
 class AppRouter {
-  static const String home = '/';
+  static const String splash = '/';
+  static const String home = '/home';
   static const String upload = '/upload';
   static const String preview = '/preview';
   static const String processing = '/processing';
   static const String success = '/success';
   
   static final GoRouter router = GoRouter(
-    initialLocation: home,
+    initialLocation: splash,
     routes: [
+      GoRoute(
+        path: splash,
+        name: 'splash',
+        builder: (context, state) => const SplashPage(),
+      ),
       GoRoute(
         path: home,
         name: 'home',

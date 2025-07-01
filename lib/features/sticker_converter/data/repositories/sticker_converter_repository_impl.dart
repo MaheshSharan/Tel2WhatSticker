@@ -11,6 +11,7 @@ import '../datasources/whatsapp_service.dart';
 import '../models/sticker_pack_model.dart';
 import '../../../../core/error/failures.dart';
 import '../../../../core/error/exceptions.dart';
+import '../../../../core/constants/app_constants.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
@@ -268,76 +269,94 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
     }
   }
   
-  @override
-  Future<Either<Failure, StickerPackEntity>> processTelegramUrl({
-    required String url,
-    String? customPackName,
-    String? customPublisher,
-  }) async {
+  // Download Telegram stickers and return as File list for unified processing
+  Future<Either<Failure, Map<String, dynamic>>> downloadTelegramStickers(String url) async {
     try {
-      _updateProgress(_currentState.copyWith(
-        status: ProcessingStatus.processing,
-      ));
-      
-      // Validate URL
       if (!_telegramApiService.isValidTelegramUrl(url)) {
         return const Left(ValidationFailure('Invalid Telegram sticker pack URL'));
       }
       
-      // Extract pack name from URL
       final packName = _telegramApiService.extractPackNameFromUrl(url);
       if (packName == null) {
         return const Left(ValidationFailure('Could not extract pack name from URL'));
       }
       
       // Get sticker pack info from Telegram
-      // Note: Using mock implementation for demo
-      final stickerData = await _telegramApiService.mockGetStickerPack(packName);
+      final stickerPackInfo = await _telegramApiService.getStickerPackInfo(packName);
+      final stickers = stickerPackInfo['stickers'] as List<dynamic>?;
+      
+      if (stickers == null || stickers.isEmpty) {
+        return const Left(TelegramFailure('No stickers found in this Telegram pack.'));
+      }
+      
+      // Create downloads directory
+      final appDir = await getApplicationDocumentsDirectory();
+      final downloadDir = Directory('${appDir.path}/telegram_downloads');
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
+      }
+      
+      // Download all stickers to files
+      final downloadedFiles = <File>[];
+      final downloadedStickers = <Map<String, dynamic>>[];
       
       _updateProgress(_currentState.copyWith(
-        totalFiles: stickerData.length,
+        status: ProcessingStatus.processing,
+        totalFiles: stickers.length,
+        completedFiles: 0,
+        errorFiles: 0,
       ));
       
-      // Create output directory
-      final outputDir = await _imageProcessingService.getOutputDirectory();
-      final packDir = '$outputDir/telegram_${DateTime.now().millisecondsSinceEpoch}';
-      await Directory(packDir).create(recursive: true);
-      
-      // Download and process stickers
-      final processedStickers = <StickerModel>[];
-      
-      for (int i = 0; i < stickerData.length; i++) {
-        final stickerInfo = stickerData[i];
-        
+      for (int i = 0; i < stickers.length; i++) {
+        final stickerInfo = stickers[i];
         try {
-          // In a real implementation, download the actual file
-          // For demo, we'll create a placeholder
+          final fileId = stickerInfo['file_id'] as String;
+          final emoji = stickerInfo['emoji'] as String? ?? '😀';
+          final isAnimated = stickerInfo['is_animated'] == true;
+          final isVideo = stickerInfo['is_video'] == true;
           
-          final fileName = '${i}_telegram_sticker.webp';
-          final outputPath = '$packDir/$fileName';
+          // Determine file extension based on sticker type
+          String fileName;
+          if (isVideo) {
+            fileName = '${i}_telegram_sticker.webm';
+          } else if (isAnimated) {
+            fileName = '${i}_telegram_sticker.webp'; // Animated WebP
+          } else {
+            fileName = '${i}_telegram_sticker.webp'; // Static WebP
+          }
           
-          // Mock processing (in real app, download and process actual file)
-          await Future.delayed(const Duration(milliseconds: 500));
+          final outputPath = '${downloadDir.path}/$fileName';
           
-          // Create mock processed file
-          await File(outputPath).create();
-          await File(outputPath).writeAsBytes([]);
-          
-          final sticker = StickerModel(
-            imagePath: outputPath,
-            emojis: [stickerInfo['emoji'] ?? '😀'],
-            fileSizeKB: 50, // Mock size
-            width: 512,
-            height: 512,
+          // Download sticker file
+          final stickerFile = await _telegramApiService.downloadSticker(
+            fileId: fileId,
+            fileName: fileName,
           );
           
-          processedStickers.add(sticker);
+          // Move to our expected location if different
+          if (stickerFile.path != outputPath) {
+            await stickerFile.copy(outputPath);
+            await stickerFile.delete();
+          }
+          
+          final downloadedFile = File(outputPath);
+          if (await downloadedFile.exists()) {
+            downloadedFiles.add(downloadedFile);
+            downloadedStickers.add({
+              'file_id': fileId,
+              'emoji': emoji,
+              'is_animated': isAnimated,
+              'is_video': isVideo,
+              'local_path': outputPath,
+            });
+          }
           
           _updateProgress(_currentState.copyWith(
             completedFiles: _currentState.completedFiles + 1,
           ));
           
         } catch (e) {
+          print('Error downloading sticker $i: ${e.toString()}');
           _updateProgress(_currentState.copyWith(
             errorFiles: _currentState.errorFiles + 1,
           ));
@@ -345,50 +364,20 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
         }
       }
       
-      if (processedStickers.isEmpty) {
-        return const Left(TelegramFailure('No stickers could be downloaded'));
+      if (downloadedFiles.isEmpty) {
+        return const Left(TelegramFailure('No stickers could be downloaded.'));
       }
-      
-      // Create tray image directly in the final sticker pack directory
-      final trayImageBytes = await File(processedStickers.first.imagePath).readAsBytes();
-      final compressedTrayBytes = await _imageProcessingService.createTrayImage(trayImageBytes);
-      final trayPath = p.join(packDir, 'tray.png');
-      await File(trayPath).writeAsBytes(compressedTrayBytes, flush: true);
-      // Debug log to confirm tray image exists at the expected location
-      final trayFile = File(trayPath);
-      final trayExists = await trayFile.exists();
-      final traySize = trayExists ? await trayFile.length() : -1;
-      print('DEBUG: Final tray image path: $trayPath, exists: $trayExists, size: ${traySize / 1024} KB');
-      // Log first 16 bytes of tray image
-      if (await trayFile.exists()) {
-        final trayBytes = await trayFile.readAsBytes();
-        final trayHeader = trayBytes.take(16).toList();
-        print('DEBUG: tray.png first 16 bytes: $trayHeader');
-      }
-      // Log first 16 bytes of first sticker file
-      if (processedStickers.isNotEmpty) {
-        final firstStickerFile = File(processedStickers.first.imagePath);
-        if (await firstStickerFile.exists()) {
-          final stickerBytes = await firstStickerFile.readAsBytes();
-          final stickerHeader = stickerBytes.take(16).toList();
-          print('DEBUG: first sticker first 16 bytes: $stickerHeader');
-        }
-      }
-      // Create sticker pack
-      final pack = StickerPackModel(
-        identifier: 'telegram_$packName',
-        name: customPackName ?? packName,
-        publisher: customPublisher ?? 'Telegram',
-        trayImagePath: trayPath,
-        stickers: processedStickers,
-        animated: false,
-      );
       
       _updateProgress(_currentState.copyWith(
         status: ProcessingStatus.completed,
       ));
       
-      return Right(pack.toEntity());
+      return Right({
+        'files': downloadedFiles,
+        'pack_name': stickerPackInfo['name'] ?? packName,
+        'title': stickerPackInfo['title'] ?? packName,
+        'stickers': downloadedStickers,
+      });
       
     } on TelegramException catch (e) {
       _updateProgress(_currentState.copyWith(
@@ -404,6 +393,282 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
         error: e.toString(),
       ));
       return Left(TelegramFailure('Unexpected error: ${e.toString()}'));
+    }
+  }
+
+  // Progressive Telegram sticker download with UI feedback
+  @override
+  Future<Either<Failure, Map<String, dynamic>>> downloadTelegramStickersWithProgress(
+    String url, {
+    required Function(int currentIndex, int totalStickers, String currentUrl, List<String> downloadedFiles, List<Map<String, dynamic>> allStickers) onProgress,
+  }) async {
+    try {
+      if (!_telegramApiService.isValidTelegramUrl(url)) {
+        return const Left(ValidationFailure(AppConstants.invalidTelegramUrlMessage));
+      }
+      
+      final packName = _telegramApiService.extractPackNameFromUrl(url);
+      if (packName == null) {
+        return const Left(ValidationFailure('Could not extract pack name from URL'));
+      }
+      
+      // Get sticker pack info from Telegram
+      final stickerPackInfo = await _telegramApiService.getStickerPackInfo(packName);
+      final allStickers = stickerPackInfo['stickers'] as List<dynamic>?;
+      
+      if (allStickers == null || allStickers.isEmpty) {
+        return const Left(TelegramFailure('No stickers found in this Telegram pack.'));
+      }
+      
+      // Limit to WhatsApp maximum and prepare sticker data
+      final stickersToProcess = allStickers.take(AppConstants.maxStickersInPack).toList();
+      final stickerDataList = <Map<String, dynamic>>[];
+      
+      for (int i = 0; i < stickersToProcess.length; i++) {
+        final stickerInfo = stickersToProcess[i];
+        final stickerData = {
+          'index': i,
+          'file_id': stickerInfo['file_id'] as String,
+          'emoji': stickerInfo['emoji'] as String? ?? '😀',
+          'is_animated': stickerInfo['is_animated'] == true,
+          'is_video': stickerInfo['is_video'] == true,
+          'status': 'pending', // pending, downloading, processing, completed
+          'progress': 0.0,
+          'local_path': null,
+          'selected': i < AppConstants.maxStickersInPack, // First 30 selected by default
+        };
+        stickerDataList.add(stickerData);
+      }
+      
+      // Create downloads directory
+      final appDir = await getApplicationDocumentsDirectory();
+      final downloadDir = Directory('${appDir.path}/telegram_downloads');
+      if (!await downloadDir.exists()) {
+        await downloadDir.create(recursive: true);
+      }
+      
+      final downloadedFiles = <String>[];
+      
+      // Download each sticker with progress updates
+      for (int i = 0; i < stickerDataList.length; i++) {
+        final stickerData = stickerDataList[i];
+        
+        try {
+          // Update status to downloading
+          stickerData['status'] = 'downloading';
+          onProgress(i, stickerDataList.length, stickerData['file_id'], downloadedFiles, stickerDataList);
+          
+          final fileId = stickerData['file_id'] as String;
+          final isAnimated = stickerData['is_animated'] as bool;
+          final isVideo = stickerData['is_video'] as bool;
+          
+          // Determine file extension based on sticker type
+          String fileName;
+          if (isVideo) {
+            fileName = '${i}_telegram_sticker.webm';
+          } else if (isAnimated) {
+            fileName = '${i}_telegram_sticker.webp'; // Animated WebP
+          } else {
+            fileName = '${i}_telegram_sticker.webp'; // Static WebP
+          }
+          
+          final outputPath = '${downloadDir.path}/$fileName';
+          
+          // Download sticker file
+          final stickerFile = await _telegramApiService.downloadSticker(
+            fileId: fileId,
+            fileName: fileName,
+          );
+          
+          // Move to our expected location if different
+          if (stickerFile.path != outputPath) {
+            await stickerFile.copy(outputPath);
+            await stickerFile.delete();
+          }
+          
+          final downloadedFile = File(outputPath);
+          if (await downloadedFile.exists()) {
+            stickerData['local_path'] = outputPath;
+            stickerData['status'] = 'completed';
+            stickerData['progress'] = 1.0;
+            downloadedFiles.add(outputPath);
+            
+            // Update progress after successful download
+            onProgress(i + 1, stickerDataList.length, '', downloadedFiles, stickerDataList);
+          } else {
+            stickerData['status'] = 'error';
+            print('Failed to download sticker ${i + 1}');
+          }
+          
+        } catch (e) {
+          stickerData['status'] = 'error';
+          print('Error downloading sticker ${i + 1}: $e');
+          // Continue with next sticker even if one fails
+        }
+        
+        // Small delay between downloads to prevent overwhelming the API
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      
+      // Filter out only successfully downloaded files
+      final successfulFiles = stickerDataList
+          .where((data) => data['status'] == 'completed' && data['local_path'] != null)
+          .map((data) => File(data['local_path'] as String))
+          .toList();
+      
+      if (successfulFiles.isEmpty) {
+        return const Left(TelegramFailure('Failed to download any stickers from the pack'));
+      }
+      
+      return Right({
+        'files': successfulFiles,
+        'pack_name': stickerPackInfo['name'] ?? packName,
+        'title': stickerPackInfo['title'] ?? packName,
+        'stickers': stickerDataList,
+      });
+      
+    } on TelegramException catch (e) {
+      return Left(TelegramFailure(e.message));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      return Left(TelegramFailure('Unexpected error: ${e.toString()}'));
+    }
+  }
+
+  // Fetch only Telegram pack metadata and sticker file IDs
+  Future<Either<Failure, Map<String, dynamic>>> fetchTelegramPackMetadata(String url) async {
+    try {
+      if (!_telegramApiService.isValidTelegramUrl(url)) {
+        return const Left(ValidationFailure('Invalid Telegram sticker pack URL'));
+      }
+      final packName = _telegramApiService.extractPackNameFromUrl(url);
+      if (packName == null) {
+        return const Left(ValidationFailure('Could not extract pack name from URL'));
+      }
+      final stickerPackInfo = await _telegramApiService.getStickerPackInfo(packName);
+      final stickers = stickerPackInfo['stickers'] as List<dynamic>?;
+      if (stickers == null || stickers.isEmpty) {
+        return const Left(TelegramFailure('No stickers found in this Telegram pack.'));
+      }
+      // Return metadata: name, publisher, sticker file IDs, emojis, etc.
+      return Right({
+        'name': stickerPackInfo['name'] ?? packName,
+        'title': stickerPackInfo['title'] ?? packName,
+        'stickers': stickers,
+      });
+    } catch (e) {
+      return Left(TelegramFailure('Failed to fetch Telegram pack metadata: ${e.toString()}'));
+    }
+  }
+  
+  @override
+  Future<Either<Failure, StickerPackEntity>> processTelegramUrl({
+    required String url,
+    String? customPackName,
+    String? customPublisher,
+  }) async {
+    print('=== UNIQUE_DEBUG: ENTERED Telegram Sticker Repository ===');
+    try {
+      _updateProgress(_currentState.copyWith(
+        status: ProcessingStatus.processing,
+      ));
+      // Validate URL
+      if (!_telegramApiService.isValidTelegramUrl(url)) {
+        return const Left(ValidationFailure('Invalid Telegram sticker pack URL'));
+      }
+      // Extract pack name from URL
+      final packName = _telegramApiService.extractPackNameFromUrl(url);
+      if (packName == null) {
+        return const Left(ValidationFailure('Could not extract pack name from URL'));
+      }
+      // Get sticker pack info from Telegram (real API call)
+      final stickerPackInfo = await _telegramApiService.getStickerPackInfo(packName);
+      final stickers = stickerPackInfo['stickers'] as List<dynamic>?;
+      if (stickers == null || stickers.isEmpty) {
+        return const Left(TelegramFailure('No stickers found in this Telegram pack.'));
+      }
+      _updateProgress(_currentState.copyWith(
+        totalFiles: stickers.length,
+      ));
+      // Create output directory
+      final outputDir = await _imageProcessingService.getOutputDirectory();
+      final packDir = '$outputDir/telegram_${DateTime.now().millisecondsSinceEpoch}';
+      await Directory(packDir).create(recursive: true);
+      // Download and process stickers
+      final processedStickers = <StickerModel>[];
+      for (int i = 0; i < stickers.length; i++) {
+        final stickerInfo = stickers[i];
+        try {
+          final fileId = stickerInfo['file_id'] as String;
+          final emoji = stickerInfo['emoji'] as String? ?? '😀';
+          final fileName = '${i}_telegram_sticker.webp';
+          // Download sticker file
+          final stickerFile = await _telegramApiService.downloadSticker(
+            fileId: fileId,
+            fileName: fileName,
+          );
+          // Process sticker for WhatsApp
+          final processedBytes = await _imageProcessingService.processImageForWhatsApp(
+            stickerFile.path,
+          );
+          final outputPath = '$packDir/$fileName';
+          await File(outputPath).writeAsBytes(processedBytes);
+          final fileSizeKB = (processedBytes.length / 1024).round();
+          final dimensions = await _imageProcessingService.getImageDimensions(stickerFile.path);
+          final sticker = StickerModel(
+            imagePath: outputPath,
+            emojis: [emoji],
+            fileSizeKB: fileSizeKB,
+            width: dimensions['width']!,
+            height: dimensions['height']!,
+          );
+          processedStickers.add(sticker);
+          _updateProgress(_currentState.copyWith(
+            completedFiles: _currentState.completedFiles + 1,
+          ));
+        } catch (e) {
+          _updateProgress(_currentState.copyWith(
+            errorFiles: _currentState.errorFiles + 1,
+          ));
+          continue;
+        }
+      }
+      if (processedStickers.isEmpty) {
+        return const Left(TelegramFailure('No stickers could be downloaded or processed.'));
+      }
+      // Create tray image directly in the final sticker pack directory
+      final trayImageBytes = await File(processedStickers.first.imagePath).readAsBytes();
+      final compressedTrayBytes = await _imageProcessingService.createTrayImage(trayImageBytes);
+      final trayPath = p.join(packDir, 'tray.png');
+      await File(trayPath).writeAsBytes(compressedTrayBytes, flush: true);
+      // Create sticker pack
+      final pack = StickerPackModel(
+        identifier: 'telegram_$packName',
+        name: customPackName ?? packName,
+        publisher: customPublisher ?? 'Telegram',
+        trayImagePath: trayPath,
+        stickers: processedStickers,
+        animated: false, // TODO: Detect animated stickers and set this flag
+      );
+      _updateProgress(_currentState.copyWith(
+        status: ProcessingStatus.completed,
+      ));
+      return Right(pack.toEntity());
+    } on TelegramException catch (e) {
+      _updateProgress(_currentState.copyWith(
+        status: ProcessingStatus.error,
+        error: e.message,
+      ));
+      return Left(TelegramFailure(e.message));
+    } on NetworkException catch (e) {
+      return Left(NetworkFailure(e.message));
+    } catch (e) {
+      _updateProgress(_currentState.copyWith(
+        status: ProcessingStatus.error,
+        error: e.toString(),
+      ));
+      return Left(TelegramFailure('Unexpected error:  ${e.toString()}'));
     }
   }
   

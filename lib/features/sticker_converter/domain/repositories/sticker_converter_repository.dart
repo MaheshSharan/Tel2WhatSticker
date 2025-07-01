@@ -25,4 +25,15 @@ abstract class StickerConverterRepository {
   Future<Either<Failure, List<String>>> validateFiles(List<File> files);
   
   Future<Either<Failure, String>> extractZipFile(File zipFile);
+  
+  Future<Either<Failure, Map<String, dynamic>>> fetchTelegramPackMetadata(String url);
+  
+  // New method for unified Telegram approach
+  Future<Either<Failure, Map<String, dynamic>>> downloadTelegramStickers(String url);
+  
+  // New method for Telegram downloading with progress
+  Future<Either<Failure, Map<String, dynamic>>> downloadTelegramStickersWithProgress(
+    String url, {
+    required Function(int currentIndex, int totalStickers, String currentUrl, List<String> downloadedFiles, List<Map<String, dynamic>> allStickers) onProgress,
+  });
 }

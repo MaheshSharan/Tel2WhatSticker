@@ -37,4 +37,13 @@ class StickerConverterEvent with _$StickerConverterEvent {
   const factory StickerConverterEvent.updateProgress({
     required ProcessingState progress,
   }) = UpdateProgressEvent;
+  
+  const factory StickerConverterEvent.fetchTelegramPackMetadata({
+    required String url,
+  }) = FetchTelegramPackMetadataEvent;
+  
+  // New event for unified Telegram approach
+  const factory StickerConverterEvent.downloadTelegramStickers({
+    required String url,
+  }) = DownloadTelegramStickersEvent;
 }
