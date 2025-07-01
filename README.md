@@ -14,7 +14,9 @@ A Flutter mobile application that converts images and Telegram sticker packs to 
 - Automatic conversion to WhatsApp-compatible format
 - Resizing to optimal dimensions (512x512px maximum)
 - **Individual sticker compression to under 100KB** (WhatsApp requirement)
-- Support for both static and animated stickers
+- Full support for both static and animated stickers
+- Progressive download with real-time progress indicators
+- WebM to WebP conversion for animated Telegram stickers
 - Aggressive compression with quality reduction when needed
 
 ### WhatsApp Integration
@@ -46,7 +48,7 @@ A Flutter mobile application that converts images and Telegram sticker packs to 
 ### For Developers
 1. Clone the repository
 ```bash
-git clone <repository-url>
+git clone https://github.com/MaheshSharan/Tel2WhatSticker
 cd telegram_to_whatsapp_stickers
 ```
 
@@ -84,8 +86,10 @@ flutter run
 ### Telegram Sticker Pack Conversion
 1. Select "Telegram URL" tab
 2. Paste a Telegram sticker pack URL (t.me/addstickers/...)
-3. Enter pack name and publisher information
-4. Process and add to WhatsApp
+3. Watch real-time download progress for each sticker
+4. Animated stickers are automatically converted from WebM to WebP
+5. Enter pack name and publisher information
+6. Process and add to WhatsApp
 
 ## Supported Formats
 
@@ -94,6 +98,7 @@ flutter run
 - JPG/JPEG
 - WebP
 - GIF (converted to static)
+- WebM (animated - converted to WebP)
 - BMP
 
 ### Output Format
@@ -105,7 +110,7 @@ flutter run
 
 - Maximum 30 stickers per pack (WhatsApp limitation)
 - **Each individual sticker must be under 100KB** (WhatsApp requirement)
-- Animated stickers are converted to static format
+- Full animated sticker support with WebM to WebP conversion
 - ZIP files larger than 50MB may cause performance issues
 - Very high resolution images may require aggressive compression
 
@@ -124,6 +129,7 @@ flutter run
 - file_picker: File selection
 - path_provider: File system access
 - whatsapp_stickers_handler: WhatsApp integration
+- ffmpeg_kit_flutter: Animated sticker conversion
 
 ## Troubleshooting
 
@@ -181,6 +187,15 @@ For issues and questions:
 - Include device information and error logs when applicable
 
 ## Version History
+
+### v2.0.0 (Latest)
+- **Full animated sticker support** with WebM to WebP conversion
+- Progressive Telegram sticker download with real-time progress indicators
+- Unified upload flow for images and Telegram stickers
+- Enhanced UI/UX with dynamic progress grid
+- Removed legacy code and improved architecture
+- 30-sticker selection limit enforcement
+- Comprehensive error handling and debug logging
 
 ### v1.0.0
 - Initial release
