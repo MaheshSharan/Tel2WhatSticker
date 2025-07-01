@@ -912,9 +912,11 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
                       ? AppColors.success 
                       : status == 'downloading'
                         ? AppColors.primary
-                        : status == 'error'
-                          ? AppColors.error
-                          : AppColors.outline.withOpacity(0.3),
+                        : status == 'converting'
+                          ? Colors.orange
+                          : status == 'error'
+                            ? AppColors.error
+                            : AppColors.outline.withOpacity(0.3),
                     width: 2,
                   ),
                 ),
@@ -954,21 +956,39 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
                       ),
                     
                     // Progress overlay
-                    if (status == 'downloading')
+                    if (status == 'downloading' || status == 'converting')
                       Container(
                         decoration: BoxDecoration(
                           color: AppColors.surface.withOpacity(0.8),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              value: progress,
-                              strokeWidth: 3,
-                              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-                            ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: CircularProgressIndicator(
+                                  value: progress,
+                                  strokeWidth: 3,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    status == 'converting' ? Colors.orange : AppColors.primary
+                                  ),
+                                ),
+                              ),
+                              if (status == 'converting') ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Converting',
+                                  style: TextStyle(
+                                    fontSize: 8,
+                                    color: Colors.orange,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                       ),
@@ -985,9 +1005,11 @@ class _UploadPageState extends State<UploadPage> with TickerProviderStateMixin {
                             ? AppColors.success 
                             : status == 'downloading'
                               ? AppColors.primary
-                              : status == 'error'
-                                ? AppColors.error
-                                : AppColors.outline.withOpacity(0.5),
+                              : status == 'converting'
+                                ? Colors.orange
+                                : status == 'error'
+                                  ? AppColors.error
+                                  : AppColors.outline.withOpacity(0.5),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(

@@ -489,11 +489,52 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
           final downloadedFile = File(outputPath);
           if (await downloadedFile.exists()) {
             stickerData['local_path'] = outputPath;
-            stickerData['status'] = 'completed';
-            stickerData['progress'] = 1.0;
-            downloadedFiles.add(outputPath);
+            stickerData['status'] = 'downloaded';
+            stickerData['progress'] = 0.5; // 50% - download complete
             
-            // Update progress after successful download
+            // Update progress after download
+            onProgress(i, stickerDataList.length, 'Downloaded', downloadedFiles, stickerDataList);
+            
+            // Convert WebM to WebP if needed
+            if (isVideo && outputPath.endsWith('.webm')) {
+              try {
+                print('🔄 Starting WebM to WebP conversion for sticker ${i + 1}');
+                stickerData['status'] = 'converting';
+                onProgress(i, stickerDataList.length, 'Converting...', downloadedFiles, stickerDataList);
+                
+                // Process the downloaded WebM file to convert to WebP
+                final processedBytes = await _imageProcessingService.processImageForWhatsApp(
+                  outputPath,
+                );
+                
+                // Create new WebP path
+                final webpPath = outputPath.replaceAll('.webm', '.webp');
+                await File(webpPath).writeAsBytes(processedBytes);
+                
+                // Delete original WebM file
+                await downloadedFile.delete();
+                
+                // Update with converted path
+                stickerData['local_path'] = webpPath;
+                stickerData['status'] = 'completed';
+                stickerData['progress'] = 1.0;
+                downloadedFiles.add(webpPath);
+                
+                print('✅ Successfully converted WebM to WebP: $webpPath');
+                print('📊 Converted file size: ${(processedBytes.length / 1024).toStringAsFixed(1)}KB');
+              } catch (e) {
+                print('❌ Failed to convert WebM to WebP: $e');
+                stickerData['status'] = 'error';
+                stickerData['error'] = 'Conversion failed: $e';
+              }
+            } else {
+              // For non-WebM files, just mark as completed
+              stickerData['status'] = 'completed';
+              stickerData['progress'] = 1.0;
+              downloadedFiles.add(outputPath);
+            }
+            
+            // Update progress after processing
             onProgress(i + 1, stickerDataList.length, '', downloadedFiles, stickerDataList);
           } else {
             stickerData['status'] = 'error';
@@ -510,10 +551,11 @@ class StickerConverterRepositoryImpl implements StickerConverterRepository {
         await Future.delayed(const Duration(milliseconds: 100));
       }
       
-      // Filter out only successfully downloaded files
+      // Filter out only successfully converted files (should be .webp)
       final successfulFiles = stickerDataList
           .where((data) => data['status'] == 'completed' && data['local_path'] != null)
           .map((data) => File(data['local_path'] as String))
+          .where((file) => file.path.endsWith('.webp')) // Only include converted WebP files
           .toList();
       
       if (successfulFiles.isEmpty) {
