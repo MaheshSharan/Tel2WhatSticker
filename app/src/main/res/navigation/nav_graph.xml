@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="utf-8"?>
+<navigation xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/nav_graph"
+    app:startDestination="@id/splashFragment">
+
+    <fragment
+        android:id="@+id/splashFragment"
+        android:name="com.maheshsharan.tel2what.ui.splash.SplashFragment"
+        android:label="SplashFragment">
+
+        <action
+            android:id="@+id/action_splashFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/splashFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/homeFragment"
+        android:name="com.maheshsharan.tel2what.ui.home.HomeFragment"
+        android:label="HomeFragment">
+        <action
+            android:id="@+id/action_homeFragment_to_telegramImportFragment"
+            app:destination="@id/telegramImportFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_manualUploadFragment"
+            app:destination="@id/manualUploadFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_storageManagementFragment"
+            app:destination="@id/storageManagementFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/telegramImportFragment"
+        android:name="com.maheshsharan.tel2what.ui.importpack.TelegramImportFragment"
+        android:label="TelegramImportFragment">
+        <action
+            android:id="@+id/action_telegramImportFragment_to_downloadConversionFragment"
+            app:destination="@id/downloadConversionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/downloadConversionFragment"
+        android:name="com.maheshsharan.tel2what.ui.conversion.DownloadConversionFragment"
+        android:label="DownloadConversionFragment">
+        <action
+            android:id="@+id/action_downloadConversionFragment_to_stickerSelectionFragment"
+            app:destination="@id/stickerSelectionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/stickerSelectionFragment"
+        android:name="com.maheshsharan.tel2what.ui.selection.StickerSelectionFragment"
+        android:label="StickerSelectionFragment">
+        <action
+            android:id="@+id/action_stickerSelectionFragment_to_trayIconSelectionFragment"
+            app:destination="@id/trayIconSelectionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/trayIconSelectionFragment"
+        android:name="com.maheshsharan.tel2what.ui.trayicon.TrayIconSelectionFragment"
+        android:label="TrayIconSelectionFragment">
+        <action
+            android:id="@+id/action_trayIconSelectionFragment_to_exportFragment"
+            app:destination="@id/exportFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/exportFragment"
+        android:name="com.maheshsharan.tel2what.ui.export.ExportFragment"
+        android:label="ExportFragment">
+        <action
+            android:id="@+id/action_exportFragment_to_homeFragment"
+            app:destination="@id/homeFragment"
+            app:popUpTo="@id/homeFragment"
+            app:popUpToInclusive="true" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/manualUploadFragment"
+        android:name="com.maheshsharan.tel2what.ui.manual.ManualUploadFragment"
+        android:label="ManualUploadFragment">
+        <action
+            android:id="@+id/action_manualUploadFragment_to_stickerSelectionFragment"
+            app:destination="@id/stickerSelectionFragment" />
+    </fragment>
+
+    <fragment
+        android:id="@+id/storageManagementFragment"
+        android:name="com.maheshsharan.tel2what.ui.storage.StorageManagementFragment"
+        android:label="StorageManagementFragment" />
+
+</navigation>

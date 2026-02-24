@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primary Brand Colors -->
+    <color name="primary">#1AE07A</color>
+    <color name="primary_dark">#12C568</color>
+    <color name="primary_light">#E8FDF1</color>
+
+    <!-- Light Mode Background & Surfaces -->
+    <color name="background_light">#F6F8F7</color>
+    <color name="surface_light">#FFFFFF</color>
+    <color name="text_main_light">#0E1B14</color>
+    <color name="text_sec_light">#4E9772</color>
+
+    <!-- Dark Mode Background & Surfaces -->
+    <color name="background_dark">#112119</color>
+    <color name="surface_dark">#1A2E24</color>
+    <color name="text_main_dark">#E7F3ED</color>
+    <color name="text_sec_dark">#8ABF9E</color>
+
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
