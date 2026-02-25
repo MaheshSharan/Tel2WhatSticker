@@ -84,11 +84,9 @@ class StickerContentProvider : ContentProvider() {
         val cursor = MatrixCursor(arrayOf("image_file", "emojis"))
 
         runBlocking {
-            val stickers = database.stickerDao().getStickersForPackSync(identifier)
+            val stickers = database.stickerDao().getSelectedReadyStickersForPackSync(identifier)
             for (sticker in stickers) {
-                if (sticker.status == "READY") {
-                    cursor.addRow(arrayOf(File(sticker.imageFile).name, sticker.emojis))
-                }
+                cursor.addRow(arrayOf(File(sticker.imageFile).name, sticker.emojis))
             }
         }
         return cursor

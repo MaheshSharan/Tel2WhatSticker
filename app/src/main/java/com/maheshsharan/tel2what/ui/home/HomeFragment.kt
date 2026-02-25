@@ -37,8 +37,11 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val recyclerRecentPacks: RecyclerView = view.findViewById(R.id.recyclerRecentPacks)
 
         // Setup RecyclerView
-        adapter = RecentPacksAdapter { _ ->
-            // Handle clicking a recent pack (could navigate to details or intent to WA)
+        adapter = RecentPacksAdapter { pack ->
+            val bundle = Bundle().apply {
+                putString("packName", pack.identifier)
+            }
+            findNavController().navigate(R.id.stickerSelectionFragment, bundle)
         }
         recyclerRecentPacks.layoutManager = LinearLayoutManager(requireContext(), LinearLayoutManager.HORIZONTAL, false)
         recyclerRecentPacks.adapter = adapter

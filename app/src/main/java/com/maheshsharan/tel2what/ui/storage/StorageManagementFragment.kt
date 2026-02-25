@@ -37,15 +37,26 @@ class StorageManagementFragment : Fragment(R.layout.fragment_storage_management)
         val btnClearCache: Button? = view.findViewById(R.id.btnClearCache)
         val btnDeleteAll: Button? = view.findViewById(R.id.btnDeleteAll)
         val recyclerStoragePacks: RecyclerView? = view.findViewById(R.id.recyclerStoragePacks)
+        val txtTotalSize: TextView? = view.findViewById(R.id.txtTotalSize)
 
-        val cardView = btnClearCache?.parent?.parent as? android.view.ViewGroup
-        val txtTotalSize = cardView?.getChildAt(1) as? TextView
-
-        adapter = StorageAdapter { packId, packName ->
-            showDeleteConfirmationDialog(packName) {
-                viewModel.deletePack(packId)
+        adapter = StorageAdapter(
+            onClearCacheClick = { packId, packName ->
+                showConfirmationDialog(
+                    title = "Clear Cache",
+                    message = "Clear temporary cache for '$packName'?"
+                ) {
+                    viewModel.clearPackCache(packId)
+                }
+            },
+            onDeleteClick = { packId, packName ->
+                showConfirmationDialog(
+                    title = "Confirm Deletion",
+                    message = "Delete '$packName'? This removes the converted pack from storage."
+                ) {
+                    viewModel.deletePack(packId)
+                }
             }
-        }
+        )
         recyclerStoragePacks?.adapter = adapter
 
         viewLifecycleOwner.lifecycleScope.launch {
@@ -67,31 +78,39 @@ class StorageManagementFragment : Fragment(R.layout.fragment_storage_management)
         }
 
         btnClearCache?.setOnClickListener {
-            requireContext().cacheDir.deleteRecursively()
-            viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-                com.bumptech.glide.Glide.get(requireContext()).clearDiskCache()
-                launch(kotlinx.coroutines.Dispatchers.Main) {
-                    com.bumptech.glide.Glide.get(requireContext()).clearMemory()
-                    AlertDialog.Builder(requireContext())
-                        .setMessage("Cache cleared successfully.")
-                        .setPositiveButton("OK", null)
-                        .show()
+            showConfirmationDialog(
+                title = "Clear Cache",
+                message = "Clear all app cache?"
+            ) {
+                viewLifecycleOwner.lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                    requireContext().cacheDir.deleteRecursively()
+                    com.bumptech.glide.Glide.get(requireContext()).clearDiskCache()
+                    launch(kotlinx.coroutines.Dispatchers.Main) {
+                        com.bumptech.glide.Glide.get(requireContext()).clearMemory()
+                        AlertDialog.Builder(requireContext())
+                            .setMessage("Cache cleared successfully.")
+                            .setPositiveButton("OK", null)
+                            .show()
+                    }
                 }
             }
         }
 
         btnDeleteAll?.setOnClickListener {
-            showDeleteConfirmationDialog("All Sticker Packs") {
+            showConfirmationDialog(
+                title = "Confirm Deletion",
+                message = "Delete all sticker packs? This action cannot be undone."
+            ) {
                 viewModel.deleteAll()
             }
         }
     }
 
-    private fun showDeleteConfirmationDialog(targetName: String, onConfirm: () -> Unit) {
+    private fun showConfirmationDialog(title: String, message: String, onConfirm: () -> Unit) {
         AlertDialog.Builder(requireContext())
-            .setTitle("Confirm Deletion")
-            .setMessage("Are you sure you want to delete '$targetName'? This action cannot be undone.")
-            .setPositiveButton("Delete") { _, _ -> onConfirm() }
+            .setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("OK") { _, _ -> onConfirm() }
             .setNegativeButton("Cancel", null)
             .show()
     }

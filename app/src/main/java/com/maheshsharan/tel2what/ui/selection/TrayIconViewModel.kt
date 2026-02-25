@@ -64,7 +64,7 @@ class TrayIconViewModel(private val repository: StickerRepository) : ViewModel()
 
                 val pack = repository.getPackById(currentPackName)
                 if (pack != null) {
-                    repository.insertPack(pack.copy(trayImageFile = finalTrayFile.absolutePath))
+                    repository.updatePack(pack.copy(trayImageFile = finalTrayFile.absolutePath))
                 }
             }
             

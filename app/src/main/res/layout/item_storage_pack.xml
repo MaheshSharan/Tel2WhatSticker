@@ -44,6 +44,15 @@
     </LinearLayout>
 
     <ImageView
+        android:id="@+id/btnClearPackCache"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:background="?attr/selectableItemBackgroundBorderless"
+        android:padding="12dp"
+        android:src="@android:drawable/ic_menu_close_clear_cancel"
+        app:tint="?attr/android:textColorSecondary" />
+
+    <ImageView
         android:id="@+id/btnDeletePack"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"

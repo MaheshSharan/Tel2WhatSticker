@@ -1,5 +1,6 @@
 package com.maheshsharan.tel2what.ui.selection
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -17,6 +18,10 @@ data class SelectableSticker(
 
 class SelectionViewModel(private val repository: StickerRepository) : ViewModel() {
 
+    private companion object {
+        private const val TAG = "Tel2What"
+    }
+
     private val _stickers = MutableStateFlow<List<SelectableSticker>>(emptyList())
     val stickers: StateFlow<List<SelectableSticker>> = _stickers.asStateFlow()
 
@@ -24,16 +29,25 @@ class SelectionViewModel(private val repository: StickerRepository) : ViewModel(
     val selectedCount: StateFlow<Int> = _selectedCount.asStateFlow()
 
     fun loadStickers(packId: String) {
+        Log.i(TAG, "SelectionVM:loadStickers packId=$packId")
         viewModelScope.launch {
             val dbStickers = repository.getStickersForPackSync(packId)
-            // Only load successfully converted stickers
             val readyStickers = dbStickers.filter { it.status == "READY" }
-            
-            // Auto-select up to 30
-            val initialList = readyStickers.mapIndexed { index, entity ->
-                SelectableSticker(entity, isSelected = index < 30)
+            Log.i(TAG, "SelectionVM:db total=${dbStickers.size} ready=${readyStickers.size}")
+
+            val initialSelectedIds = readyStickers.take(30).map { it.id }
+
+            repository.clearSelection(packId)
+            initialSelectedIds.forEach { id ->
+                if (id > 0) {
+                    repository.setStickerSelected(id, true)
+                }
             }
-            
+
+            val initialList = readyStickers.map { entity ->
+                SelectableSticker(entity, isSelected = initialSelectedIds.contains(entity.id))
+            }
+
             _stickers.value = initialList
             updateCount()
         }
@@ -42,36 +56,48 @@ class SelectionViewModel(private val repository: StickerRepository) : ViewModel(
     fun toggleSelection(stickerId: Long) {
         val currentList = _stickers.value.toMutableList()
         val index = currentList.indexOfFirst { it.entity.id == stickerId }
-        
+
         if (index != -1) {
             val item = currentList[index]
-            
-            // Prevent selecting more than 30
+
             if (!item.isSelected && _selectedCount.value >= 30) {
                 return
             }
-            
-            currentList[index] = item.copy(isSelected = !item.isSelected)
+
+            val newSelected = !item.isSelected
+            currentList[index] = item.copy(isSelected = newSelected)
             _stickers.value = currentList
             updateCount()
+
+            viewModelScope.launch {
+                if (stickerId > 0) {
+                    repository.setStickerSelected(stickerId, newSelected)
+                }
+            }
         }
     }
 
     fun selectAllAvailable() {
         val currentList = _stickers.value.toMutableList()
-        var newlySelected = 0
-        
+        val newlySelectedIds = mutableListOf<Long>()
+
         for (i in currentList.indices) {
             val item = currentList[i]
-            if (!item.isSelected && _selectedCount.value + newlySelected < 30) {
+            if (!item.isSelected && _selectedCount.value + newlySelectedIds.size < 30) {
                 currentList[i] = item.copy(isSelected = true)
-                newlySelected++
+                newlySelectedIds.add(item.entity.id)
             }
         }
-        
-        if (newlySelected > 0) {
+
+        if (newlySelectedIds.isNotEmpty()) {
             _stickers.value = currentList
             updateCount()
+
+            viewModelScope.launch {
+                newlySelectedIds.filter { it > 0 }.forEach { id ->
+                    repository.setStickerSelected(id, true)
+                }
+            }
         }
     }
 

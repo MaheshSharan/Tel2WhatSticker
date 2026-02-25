@@ -23,8 +23,8 @@ class ExportViewModel(private val repository: StickerRepository) : ViewModel() {
             val packEntity = repository.getPackById(packName)
             _pack.value = packEntity
             
-            val stickers = repository.getStickersForPackSync(packName)
-            _stickersCount.value = stickers.filter { it.status == "READY" }.size // In reality we'd filter by what's selected
+            val stickers = repository.getSelectedReadyStickersForPackSync(packName)
+            _stickersCount.value = stickers.size
         }
     }
 
@@ -38,7 +38,7 @@ class ExportViewModel(private val repository: StickerRepository) : ViewModel() {
             publisher = newAuthor
         )
         
-        repository.insertPack(updatedPack)
+        repository.updatePack(updatedPack)
         _pack.value = updatedPack
         return true
     }

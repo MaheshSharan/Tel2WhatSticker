@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Primary Brand Colors -->
-    <color name="primary">#1AE07A</color>
-    <color name="primary_dark">#12C568</color>
-    <color name="primary_light">#E8FDF1</color>
+    <color name="primary">#34C17B</color>
+    <color name="primary_dark">#23935B</color>
+    <color name="primary_light">#EAF8F1</color>
 
     <!-- Light Mode Background & Surfaces -->
     <color name="background_light">#F6F8F7</color>

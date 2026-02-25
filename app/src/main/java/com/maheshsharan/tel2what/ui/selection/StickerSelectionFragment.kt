@@ -1,6 +1,7 @@
 package com.maheshsharan.tel2what.ui.selection
 
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
@@ -20,6 +21,10 @@ import kotlinx.coroutines.launch
 
 class StickerSelectionFragment : Fragment(R.layout.fragment_sticker_selection) {
 
+    private companion object {
+        private const val TAG = "Tel2What"
+    }
+
     private lateinit var viewModel: SelectionViewModel
     private lateinit var adapter: SelectableStickerAdapter
 
@@ -38,6 +43,7 @@ class StickerSelectionFragment : Fragment(R.layout.fragment_sticker_selection) {
         val recyclerStickers: RecyclerView = view.findViewById(R.id.recyclerStickers)
 
         val packName = arguments?.getString("packName") ?: return
+        Log.i(TAG, "SelectionUI:onViewCreated packName=$packName")
 
         adapter = SelectableStickerAdapter { stickerId ->
             viewModel.toggleSelection(stickerId)
@@ -46,12 +52,14 @@ class StickerSelectionFragment : Fragment(R.layout.fragment_sticker_selection) {
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.stickers.collect { items ->
+                Log.i(TAG, "SelectionUI:list size=${items.size}")
                 adapter.submitList(items)
             }
         }
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.selectedCount.collect { count ->
+                Log.i(TAG, "SelectionUI:selectedCount=$count")
                 txtSelectionCount.text = "$count / 30 selected"
                 btnContinue.text = "Continue ($count)"
                 btnContinue.isEnabled = count in 3..30

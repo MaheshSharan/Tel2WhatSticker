@@ -114,10 +114,10 @@ class TelegramImportFragment : Fragment(R.layout.fragment_telegram_import) {
                     is ImportState.Success -> {
                         cardPreview.visibility = View.VISIBLE
                         btnAction.text = "Download First 30 (${state.stickerSet.stickers.size} total)"
-                        
+
                         txtPackTitle.text = state.stickerSet.title
                         txtPackStickerCount.text = "${state.stickerSet.stickers.size} Stickers total"
-                        
+
                         btnAction.setOnClickListener {
                             val bundle = Bundle().apply {
                                 putString("packName", state.stickerSet.name)
@@ -125,6 +125,20 @@ class TelegramImportFragment : Fragment(R.layout.fragment_telegram_import) {
                                 putInt("totalStickers", state.stickerSet.stickers.size)
                             }
                             findNavController().navigate(R.id.action_telegramImportFragment_to_downloadConversionFragment, bundle)
+                        }
+                    }
+                    is ImportState.AlreadyDownloaded -> {
+                        cardPreview.visibility = View.VISIBLE
+                        btnAction.text = "Open Pack"
+
+                        txtPackTitle.text = state.packTitle
+                        txtPackStickerCount.text = "${state.stickerCount} Stickers saved"
+
+                        btnAction.setOnClickListener {
+                            val bundle = Bundle().apply {
+                                putString("packName", state.packId)
+                            }
+                            findNavController().navigate(R.id.stickerSelectionFragment, bundle)
                         }
                     }
                     is ImportState.Error -> {

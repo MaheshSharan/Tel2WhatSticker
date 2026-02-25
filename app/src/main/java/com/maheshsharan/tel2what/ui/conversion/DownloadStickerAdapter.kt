@@ -46,13 +46,13 @@ class DownloadStickerAdapter : RecyclerView.Adapter<DownloadStickerAdapter.Stick
                 "DOWNLOADING" -> {
                     layoutStatus.visibility = View.VISIBLE
                     progressSticker.visibility = View.VISIBLE
-                    txtStatus.text = "Down..."
+                    txtStatus.text = "Downloading"
                     imgSticker.setImageDrawable(null)
                 }
                 "CONVERTING" -> {
                     layoutStatus.visibility = View.VISIBLE
                     progressSticker.visibility = View.VISIBLE
-                    txtStatus.text = "Conv..."
+                    txtStatus.text = "Converting"
                     imgSticker.setImageDrawable(null)
                 }
                 "READY" -> {

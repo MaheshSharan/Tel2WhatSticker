@@ -33,12 +33,32 @@ class StickerRepository(
         stickerDao.insertPack(pack)
     }
 
-    suspend fun insertStickers(stickers: List<StickerEntity>) {
-        stickerDao.insertStickers(stickers)
+    suspend fun updatePack(pack: StickerPackEntity) {
+        stickerDao.updatePack(pack)
+    }
+
+    suspend fun insertStickers(stickers: List<StickerEntity>): LongArray {
+        return stickerDao.insertStickers(stickers)
     }
 
     suspend fun updateStickerStatus(stickerId: Long, status: String) {
         stickerDao.updateStickerStatus(stickerId, status)
+    }
+
+    suspend fun updateStickerStatusAndFile(stickerId: Long, status: String, imageFile: String) {
+        stickerDao.updateStickerStatusAndFile(stickerId, status, imageFile)
+    }
+
+    suspend fun clearSelection(packId: String) {
+        stickerDao.clearSelection(packId)
+    }
+
+    suspend fun setStickerSelected(stickerId: Long, isSelected: Boolean) {
+        stickerDao.setStickerSelected(stickerId, isSelected)
+    }
+
+    suspend fun getSelectedReadyStickersForPackSync(packId: String): List<StickerEntity> {
+        return stickerDao.getSelectedReadyStickersForPackSync(packId)
     }
 
     suspend fun getAllPacksSync(): List<StickerPackEntity> {

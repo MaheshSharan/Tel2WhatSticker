@@ -11,7 +11,8 @@ import com.maheshsharan.tel2what.R
 import java.io.File
 
 class StorageAdapter(
-    private val onDeleteClick: (String, String) -> Unit // packId, packName (for confirmation)
+    private val onClearCacheClick: (String, String) -> Unit, // packId, packName
+    private val onDeleteClick: (String, String) -> Unit // packId, packName
 ) : RecyclerView.Adapter<StorageAdapter.StorageViewHolder>() {
 
     private var items = listOf<PackStorageInfo>()
@@ -24,7 +25,7 @@ class StorageAdapter(
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): StorageViewHolder {
         val view = LayoutInflater.from(parent.context)
             .inflate(R.layout.item_storage_pack, parent, false)
-        return StorageViewHolder(view, onDeleteClick)
+        return StorageViewHolder(view, onClearCacheClick, onDeleteClick)
     }
 
     override fun onBindViewHolder(holder: StorageViewHolder, position: Int) {
@@ -35,12 +36,14 @@ class StorageAdapter(
 
     class StorageViewHolder(
         itemView: View,
+        private val onClearCache: (String, String) -> Unit,
         private val onDelete: (String, String) -> Unit
     ) : RecyclerView.ViewHolder(itemView) {
 
         private val imgTrayPreview: ImageView = itemView.findViewById(R.id.imgTrayPreview)
         private val txtPackName: TextView = itemView.findViewById(R.id.txtPackName)
         private val txtPackDetails: TextView = itemView.findViewById(R.id.txtPackDetails)
+        private val btnClearPackCache: ImageView = itemView.findViewById(R.id.btnClearPackCache)
         private val btnDeletePack: ImageView = itemView.findViewById(R.id.btnDeletePack)
 
         fun bind(info: PackStorageInfo) {
@@ -52,6 +55,10 @@ class StorageAdapter(
 
             txtPackName.text = pack.name
             txtPackDetails.text = "${info.totalStickers} Stickers • ${formatFileSize(info.sizeBytes)}"
+
+            btnClearPackCache.setOnClickListener {
+                onClearCache(pack.identifier, pack.name)
+            }
 
             btnDeletePack.setOnClickListener {
                 onDelete(pack.identifier, pack.name)

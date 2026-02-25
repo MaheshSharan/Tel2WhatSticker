@@ -75,7 +75,7 @@ class ExportFragment : Fragment(R.layout.fragment_export) {
             viewLifecycleOwner.lifecycleScope.launch {
                 val success = viewModel.updatePackDetailsAndSave(name, author)
                 if (success) {
-                    addStickerPackToWhatsApp(packName, packName)
+                    addStickerPackToWhatsApp(packName, name)
                 } else {
                     Toast.makeText(requireContext(), "Error saving details", Toast.LENGTH_SHORT).show()
                 }

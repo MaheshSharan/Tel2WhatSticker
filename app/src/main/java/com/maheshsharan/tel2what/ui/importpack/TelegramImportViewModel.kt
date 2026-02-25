@@ -14,6 +14,11 @@ sealed class ImportState {
     object Idle : ImportState()
     object Loading : ImportState()
     data class Success(val stickerSet: TelegramStickerSet) : ImportState()
+    data class AlreadyDownloaded(
+        val packId: String,
+        val packTitle: String,
+        val stickerCount: Int
+    ) : ImportState()
     data class Error(val message: String) : ImportState()
 }
 
@@ -36,7 +41,11 @@ class TelegramImportViewModel(private val repository: StickerRepository) : ViewM
             val existingPack = repository.getPackById(packName)
             if (existingPack != null) {
                 val packSize = repository.getStickersForPackSync(packName).size
-                _importState.value = ImportState.Error("This pack ($packName) is already downloaded with $packSize stickers! Check your Storage.")
+                _importState.value = ImportState.AlreadyDownloaded(
+                    packId = packName,
+                    packTitle = existingPack.name,
+                    stickerCount = packSize
+                )
                 return@launch
             }
 

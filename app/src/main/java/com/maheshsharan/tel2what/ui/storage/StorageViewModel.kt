@@ -66,6 +66,16 @@ class StorageViewModel(
         return length
     }
 
+    fun clearPackCache(packId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val packCacheDir = File(context.cacheDir, "telegram/$packId")
+            packCacheDir.deleteRecursively()
+            withContext(Dispatchers.Main) {
+                loadStorageData()
+            }
+        }
+    }
+
     fun deletePack(packId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val pack = repository.getPackById(packId)

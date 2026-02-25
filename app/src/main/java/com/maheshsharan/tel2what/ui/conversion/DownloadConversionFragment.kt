@@ -38,13 +38,10 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
         val btnDownloadMore: Button = view.findViewById(R.id.btnDownloadMore)
         val progressBar: ProgressBar = view.findViewById(R.id.progressBar)
         val recyclerStickers: RecyclerView = view.findViewById(R.id.recyclerStickers)
+        val txtEtaSpeed: TextView = view.findViewById(R.id.txtEtaSpeed)
+        val txtPercent: TextView = view.findViewById(R.id.txtPercent)
+        val txtOverallProgress: TextView = view.findViewById(R.id.txtOverallProgress)
         val toolbar: Toolbar = view.findViewById(R.id.toolbar)
-
-        // Find progress text views manually based on layout structure or by traversing
-        // For simplicity we will assume we can find them if they had IDs. 
-        // Layout has nested linear layouts without IDs for text views.
-        // For a robust implementation, standard practice is to add IDs to the TextViews in XML. 
-        // We will skip updating specific text strings here unless IDs are present, and only update ProgressBar.
 
         // Setup RecyclerView
         adapter = DownloadStickerAdapter()
@@ -61,19 +58,25 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
         // Start Conversion Process
         viewModel.initAndStart(packName, packTitle)
 
-        // Observe State
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.progressData.collect { progress ->
-                progressBar.max = progress.totalToDownload
-                progressBar.progress = progress.downloaded
-                
-                if (progress.isFinished) {
-                    btnDownloadMore.isEnabled = true
-                    btnContinue.isEnabled = true
-                } else {
-                    btnDownloadMore.isEnabled = false
-                    btnContinue.isEnabled = false
-                }
+                val overallTotal = progress.overallTotal.coerceAtLeast(1)
+                val overallCompleted = progress.overallCompleted.coerceIn(0, overallTotal)
+
+                progressBar.max = overallTotal
+                progressBar.progress = overallCompleted
+
+                val percent = (overallCompleted * 100) / overallTotal
+                txtPercent.text = "$percent%"
+
+                val etaStr = formatEta(progress.etaSeconds)
+                val speedStr = formatSpeed(progress.speedStickersPerSec)
+                txtEtaSpeed.text = "$speedStr • ETA $etaStr"
+
+                txtOverallProgress.text = "$overallCompleted / $overallTotal"
+
+                btnDownloadMore.isEnabled = progress.isBatchFinished && !progress.isAllFinished && !progress.isError
+                btnContinue.isEnabled = progress.readyCount > 0 && !progress.isError
             }
         }
 
@@ -97,5 +100,18 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
             }
             findNavController().navigate(R.id.action_downloadConversionFragment_to_stickerSelectionFragment, bundle)
         }
+    }
+
+    private fun formatEta(seconds: Long?): String {
+        if (seconds == null) return "--:--"
+        val s = seconds.coerceAtLeast(0)
+        val m = s / 60
+        val r = s % 60
+        return String.format("%02d:%02d", m, r)
+    }
+
+    private fun formatSpeed(speed: Double): String {
+        if (!speed.isFinite() || speed <= 0.0) return "Speed --"
+        return String.format("Speed %.1f st/s", speed)
     }
 }
