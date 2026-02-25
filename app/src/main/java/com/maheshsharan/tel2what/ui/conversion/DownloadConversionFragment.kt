@@ -36,6 +36,7 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
         val btnBack: ImageView = view.findViewById(R.id.btnBack)
         val btnContinue: Button = view.findViewById(R.id.btnContinue)
         val btnDownloadMore: Button = view.findViewById(R.id.btnDownloadMore)
+        val btnStop: Button = view.findViewById(R.id.btnStop)
         val progressBar: ProgressBar = view.findViewById(R.id.progressBar)
         val recyclerStickers: RecyclerView = view.findViewById(R.id.recyclerStickers)
         val txtEtaSpeed: TextView = view.findViewById(R.id.txtEtaSpeed)
@@ -69,8 +70,13 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
                 val percent = (batchCompleted * 100) / batchTotal
                 txtPercent.text = "$percent%"
 
-                if (progress.isBatchFinished) {
+                // Show better initial state
+                if (progress.isStopped) {
+                    txtEtaSpeed.text = "Conversion stopped by user"
+                } else if (progress.isBatchFinished) {
                     txtEtaSpeed.text = if (progress.isAllFinished) "All stickers downloaded" else "Batch ready. Continue or download more."
+                } else if (progress.batchCompleted == 0 && progress.batchTotal > 0) {
+                    txtEtaSpeed.text = "Starting conversion..."
                 } else {
                     val etaStr = formatEta(progress.etaSeconds)
                     val speedStr = formatSpeed(progress.speedStickersPerSec)
@@ -79,8 +85,15 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
 
                 txtOverallProgress.text = "Overall: ${progress.overallCompleted} / ${progress.overallTotal}"
 
-                btnDownloadMore.isEnabled = progress.isBatchFinished && !progress.isAllFinished && !progress.isError
-                btnContinue.isEnabled = progress.readyCount > 0 && !progress.isError
+                // Show/hide stop button based on conversion state
+                val isConverting = !progress.isBatchFinished && !progress.isStopped && !progress.isError
+                btnStop.visibility = if (isConverting) View.VISIBLE else View.GONE
+                
+                btnDownloadMore.isEnabled = progress.isBatchFinished && !progress.isAllFinished && !progress.isError && !progress.isStopped
+                
+                // Require minimum 4 stickers to continue
+                val canContinue = progress.readyCount >= 4 && !progress.isError && (progress.isBatchFinished || progress.isStopped)
+                btnContinue.isEnabled = canContinue
             }
         }
 
@@ -96,6 +109,10 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
 
         btnDownloadMore.setOnClickListener {
             viewModel.downloadNextBatch()
+        }
+
+        btnStop.setOnClickListener {
+            viewModel.stopConversion()
         }
 
         btnContinue.setOnClickListener {

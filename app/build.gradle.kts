@@ -21,13 +21,22 @@ android {
         applicationId = "com.maheshsharan.tel2what"
         minSdk = 30
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
         val botToken = localProperties.getProperty("TELEGRAM_BOT_TOKEN") ?: ""
         buildConfigField("String", "TELEGRAM_BOT_TOKEN", "\"$botToken\"")
+
+        externalNativeBuild {
+            cmake {
+                cppFlags("-std=c++17 -O3")
+                // Only build minimal modern architectures to restrict APK bloat
+                abiFilters.add("arm64-v8a")
+                abiFilters.add("armeabi-v7a")
+            }
+        }
     }
 
     buildTypes {
@@ -46,6 +55,13 @@ android {
     buildFeatures {
         viewBinding = true
         buildConfig = true
+    }
+
+    externalNativeBuild {
+        cmake {
+            path("src/main/cpp/CMakeLists.txt")
+            version = "3.22.1"
+        }
     }
 
     compileOptions {
@@ -84,8 +100,14 @@ dependencies {
     kapt("androidx.room:room-compiler:$room_version")
     
     // Networking & Scraping
-    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("org.jsoup:jsoup:1.17.2") // Note: Can be removed later
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    
+    // Animation & Media Processing
+    implementation("com.airbnb.android:lottie:6.0.0")
+
+    // Debugging, Profiling & Hardened Testing
+    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
 
     testImplementation("junit:junit:4.13.2")
 }

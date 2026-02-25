@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
 class HomeFragment : Fragment(R.layout.fragment_home) {
 
     private lateinit var viewModel: HomeViewModel
-    private lateinit var adapter: RecentPacksAdapter
+    private var adapter: RecentPacksAdapter? = null
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
@@ -49,7 +49,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         // Observe Data
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.recentPacks.collect { packs ->
-                adapter.submitList(packs)
+                adapter?.submitList(packs)
             }
         }
 
@@ -64,5 +64,11 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         btnStorage.setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_storageManagementFragment)
         }
+    }
+
+    override fun onDestroyView() {
+        view?.findViewById<RecyclerView>(R.id.recyclerRecentPacks)?.adapter = null
+        adapter = null
+        super.onDestroyView()
     }
 }

@@ -55,8 +55,6 @@ class TelegramImportViewModel(private val repository: StickerRepository) : ViewM
                 // Ignore empty packs
                 if (stickerSet == null || stickerSet.stickers.isEmpty()) {
                     _importState.value = ImportState.Error("This sticker pack is empty. It has 0 stickers.")
-                } else if (stickerSet.stickers.any { it.isAnimated || it.isVideo }) {
-                    _importState.value = ImportState.Error("Animated/Video stickers are not supported in V1. Please use a static sticker pack.")
                 } else {
                     _importState.value = ImportState.Success(stickerSet)
                 }

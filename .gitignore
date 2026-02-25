@@ -5,3 +5,13 @@
 build
 stich
 stitch/
+sampleapp/
+
+# Ignore CMake build artifacts
+.cxx/
+*.iml
+.externalNativeBuild/
+.idea/
+
+# Ignore local configuration files (contains sensitive data)
+local.properties

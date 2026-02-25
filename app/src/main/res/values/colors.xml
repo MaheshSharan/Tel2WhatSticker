@@ -6,16 +6,22 @@
     <color name="primary_light">#EAF8F1</color>
 
     <!-- Light Mode Background & Surfaces -->
-    <color name="background_light">#F6F8F7</color>
+    <color name="background_light">#F5F5F5</color>
     <color name="surface_light">#FFFFFF</color>
+    <color name="nav_bar_light">#EEEEEE</color>
     <color name="text_main_light">#0E1B14</color>
     <color name="text_sec_light">#4E9772</color>
 
     <!-- Dark Mode Background & Surfaces -->
-    <color name="background_dark">#112119</color>
-    <color name="surface_dark">#1A2E24</color>
+    <color name="background_dark">#0A0A0A</color>
+    <color name="surface_dark">#1C1C1C</color>
+    <color name="nav_bar_dark">#151515</color>
     <color name="text_main_dark">#E7F3ED</color>
     <color name="text_sec_dark">#8ABF9E</color>
+
+    <!-- Loading/Pre-component gradient colors -->
+    <color name="gradient_start">#2D2F2E</color>
+    <color name="gradient_end">#0A0A0A</color>
 
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>

@@ -1,5 +1,6 @@
 package com.maheshsharan.tel2what.data.network
 
+import android.util.Log
 import com.maheshsharan.tel2what.data.network.model.TelegramResponseParser
 import com.maheshsharan.tel2what.data.network.model.TelegramStickerSet
 import kotlinx.coroutines.Dispatchers
@@ -12,7 +13,7 @@ import org.json.JSONObject
 
 class TelegramBotApi {
 
-    // Temporarily hardcoded for testing as requested
+    // Hardcoded bot token (replace with your own if building from source)
     private val botToken = "8222863145:AAFBPD95I9qNsKXaxhmiT0lMOxqMecbwdi4"
     private val client = OkHttpClient()
 
@@ -72,6 +73,7 @@ class TelegramBotApi {
     }
 
     suspend fun getFilePath(fileId: String): String? = withContext(Dispatchers.IO) {
+        Log.i("Tel2What:TelegramAPI", "Fetching file path for fileId: $fileId")
         val url = "https://api.telegram.org/bot$botToken/getFile?file_id=$fileId"
         
         val request = Request.Builder()
@@ -81,11 +83,23 @@ class TelegramBotApi {
 
         try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext null
-                val bodyStr = response.body?.string() ?: return@withContext null
-                return@withContext TelegramResponseParser.parseFilePath(bodyStr)
+                Log.i("Tel2What:TelegramAPI", "getFile response code: ${response.code}")
+                if (!response.isSuccessful) {
+                    Log.e("Tel2What:TelegramAPI", "getFile failed with HTTP ${response.code}")
+                    return@withContext null
+                }
+                val bodyStr = response.body?.string()
+                if (bodyStr == null) {
+                    Log.e("Tel2What:TelegramAPI", "getFile response body is null")
+                    return@withContext null
+                }
+                Log.d("Tel2What:TelegramAPI", "getFile response: $bodyStr")
+                val filePath = TelegramResponseParser.parseFilePath(bodyStr)
+                Log.i("Tel2What:TelegramAPI", "Parsed file path: $filePath")
+                return@withContext filePath
             }
         } catch (e: Exception) {
+            Log.e("Tel2What:TelegramAPI", "getFile exception: ${e.message}", e)
             e.printStackTrace()
             return@withContext null
         }

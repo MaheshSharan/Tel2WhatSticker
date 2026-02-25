@@ -1,5 +1,6 @@
 package com.maheshsharan.tel2what.data.network
 
+import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -18,15 +19,32 @@ class FileDownloader {
      * @return Boolean true if successful, false otherwise.
      */
     suspend fun downloadFile(url: String, destFile: File): Boolean = withContext(Dispatchers.IO) {
+        Log.i("Tel2What:FileDownloader", "Starting download")
+        Log.i("Tel2What:FileDownloader", "URL: $url")
+        Log.i("Tel2What:FileDownloader", "Destination: ${destFile.absolutePath}")
+        
         val request = Request.Builder()
             .url(url)
             .build()
 
         try {
             client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext false
+                Log.i("Tel2What:FileDownloader", "Response code: ${response.code}")
+                Log.i("Tel2What:FileDownloader", "Response successful: ${response.isSuccessful}")
                 
-                val body = response.body ?: return@withContext false
+                if (!response.isSuccessful) {
+                    Log.e("Tel2What:FileDownloader", "Download failed with HTTP ${response.code}: ${response.message}")
+                    return@withContext false
+                }
+                
+                val body = response.body
+                if (body == null) {
+                    Log.e("Tel2What:FileDownloader", "Response body is null")
+                    return@withContext false
+                }
+                
+                val contentLength = body.contentLength()
+                Log.i("Tel2What:FileDownloader", "Content length: $contentLength bytes")
                 
                 // Ensure parent directories exist
                 destFile.parentFile?.mkdirs()
@@ -36,16 +54,21 @@ class FileDownloader {
                 
                 inputStream.use { input ->
                     outputStream.use { output ->
-                        input.copyTo(output)
+                        val bytesWritten = input.copyTo(output)
+                        Log.i("Tel2What:FileDownloader", "Bytes written: $bytesWritten")
                     }
                 }
+                
+                Log.i("Tel2What:FileDownloader", "Download complete. File size: ${destFile.length()} bytes")
                 return@withContext true
             }
         } catch (e: Exception) {
+            Log.e("Tel2What:FileDownloader", "Download exception: ${e.message}", e)
             e.printStackTrace()
             // Cleanup incomplete file if any error occurs
             if (destFile.exists()) {
                 destFile.delete()
+                Log.i("Tel2What:FileDownloader", "Cleaned up incomplete file")
             }
             return@withContext false
         }

@@ -9,6 +9,7 @@
     </queries>
 
     <application
+        android:name=".Tel2WhatApplication"
         android:allowBackup="true"
         android:icon="@drawable/ic_splash_logo"
         android:roundIcon="@drawable/ic_splash_logo"

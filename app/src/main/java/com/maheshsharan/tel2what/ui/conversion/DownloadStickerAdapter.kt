@@ -47,12 +47,21 @@ class DownloadStickerAdapter : RecyclerView.Adapter<DownloadStickerAdapter.Stick
                     layoutStatus.visibility = View.VISIBLE
                     progressSticker.visibility = View.VISIBLE
                     txtStatus.text = "Downloading"
+                    txtStatus.setTextColor(itemView.context.getColor(android.R.color.white))
                     imgSticker.setImageDrawable(null)
                 }
                 "CONVERTING" -> {
                     layoutStatus.visibility = View.VISIBLE
                     progressSticker.visibility = View.VISIBLE
                     txtStatus.text = "Converting"
+                    txtStatus.setTextColor(itemView.context.getColor(android.R.color.white))
+                    imgSticker.setImageDrawable(null)
+                }
+                "STOPPED" -> {
+                    layoutStatus.visibility = View.VISIBLE
+                    progressSticker.visibility = View.GONE
+                    txtStatus.text = "Stopped"
+                    txtStatus.setTextColor(itemView.context.getColor(android.R.color.holo_orange_light))
                     imgSticker.setImageDrawable(null)
                 }
                 "READY" -> {
@@ -67,7 +76,7 @@ class DownloadStickerAdapter : RecyclerView.Adapter<DownloadStickerAdapter.Stick
                     layoutStatus.visibility = View.VISIBLE
                     progressSticker.visibility = View.GONE
                     txtStatus.text = "Failed"
-                    txtStatus.setTextColor(android.graphics.Color.RED)
+                    txtStatus.setTextColor(itemView.context.getColor(android.R.color.holo_red_light))
                 }
             }
         }

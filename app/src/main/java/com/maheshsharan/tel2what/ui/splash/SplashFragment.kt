@@ -65,14 +65,14 @@ class SplashFragment : Fragment(R.layout.fragment_splash) {
             delay(1500)
             
             // Check if onboarding is completed
-            // val prefs = requireContext().getSharedPreferences("tel2what_prefs", android.content.Context.MODE_PRIVATE)
-            // val isFirstLaunch = !prefs.getBoolean("onboarding_complete", false)
+            val prefs = requireContext().getSharedPreferences("tel2what_prefs", android.content.Context.MODE_PRIVATE)
+            val isFirstLaunch = !prefs.getBoolean("onboarding_complete", false)
             
-            // if (isFirstLaunch) {
-            //     findNavController().navigate(R.id.action_splashFragment_to_onboardingFragment)
-            // } else {
-            findNavController().navigate(R.id.action_splashFragment_to_homeFragment)
-            // }
+            if (isFirstLaunch) {
+                findNavController().navigate(R.id.action_splashFragment_to_onboardingFragment)
+            } else {
+                findNavController().navigate(R.id.action_splashFragment_to_homeFragment)
+            }
         }
     }
 }
