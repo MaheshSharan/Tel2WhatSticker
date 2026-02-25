@@ -55,6 +55,7 @@ class ConversionViewModel(
     private var currentPackName = ""
 
     private var overallStartTimeMillis: Long = 0L
+    private var batchStartTimeMillis: Long = 0L
 
     fun initAndStart(packName: String, packTitle: String) {
         Log.i(TAG, "Conversion:initAndStart packName=$packName packTitle=$packTitle")
@@ -138,6 +139,7 @@ class ConversionViewModel(
         currentIndex += limit
 
         val startIndexForThisBatch = _stickers.value.size
+        batchStartTimeMillis = System.currentTimeMillis()
 
         val placeholders = batch.map {
             StickerEntity(
@@ -314,10 +316,10 @@ class ConversionViewModel(
 
     private fun updateProgress(batchDone: Int, batchTotal: Int, overallDone: Int, overallTotal: Int) {
         val readyCount = _stickers.value.count { it.status == "READY" }
-        val elapsedSeconds = ((System.currentTimeMillis() - overallStartTimeMillis) / 1000.0).coerceAtLeast(0.001)
-        val speed = overallDone / elapsedSeconds
+        val elapsedSeconds = ((System.currentTimeMillis() - batchStartTimeMillis) / 1000.0).coerceAtLeast(0.001)
+        val speed = batchDone / elapsedSeconds
         val etaSeconds = if (speed > 0.0) {
-            ((overallTotal - overallDone) / speed).toLong().coerceAtLeast(0)
+            ((batchTotal - batchDone) / speed).toLong().coerceAtLeast(0)
         } else {
             null
         }

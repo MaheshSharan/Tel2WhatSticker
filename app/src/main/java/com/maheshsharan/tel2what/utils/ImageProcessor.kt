@@ -23,18 +23,25 @@ object ImageProcessor {
         try {
             val originalBitmap = BitmapFactory.decodeFile(inputFile.absolutePath) ?: return false
 
-            // Calculate ratios for exactly fitting within 512x512
-            val width = originalBitmap.width
-            val height = originalBitmap.height
-            val ratio = max(width / MAX_DIMENSION, height / MAX_DIMENSION)
+            val originalWidth = originalBitmap.width.toFloat()
+            val originalHeight = originalBitmap.height.toFloat()
+            val ratio = minOf(MAX_DIMENSION / originalWidth, MAX_DIMENSION / originalHeight)
 
-            val newWidth = if (ratio > 1) (width / ratio).toInt() else width
-            val newHeight = if (ratio > 1) (height / ratio).toInt() else height
+            val scaledWidth = (originalWidth * ratio).toInt()
+            val scaledHeight = (originalHeight * ratio).toInt()
 
-            val resizedBitmap = Bitmap.createScaledBitmap(originalBitmap, newWidth, newHeight, true)
+            val scaledBitmap = Bitmap.createScaledBitmap(originalBitmap, scaledWidth, scaledHeight, true)
             
-            // For WhatsApp, dimensions must not exceed 512x512, and weight < 100kb
-            // We use WEBP lossy compression and iterate to ensure file size constraints
+            // CRITICAL WA SPEC: Must be EXACTLY 512x512 with transparent padding
+            val canvasBitmap = Bitmap.createBitmap(MAX_DIMENSION.toInt(), MAX_DIMENSION.toInt(), Bitmap.Config.ARGB_8888)
+            val canvas = android.graphics.Canvas(canvasBitmap)
+            canvas.drawColor(android.graphics.Color.TRANSPARENT, android.graphics.PorterDuff.Mode.CLEAR)
+            
+            // Draw centered
+            val left = (MAX_DIMENSION - scaledWidth) / 2f
+            val top = (MAX_DIMENSION - scaledHeight) / 2f
+            canvas.drawBitmap(scaledBitmap, left, top, null)
+            
             var quality = 100
             var success = false
 
@@ -47,7 +54,7 @@ object ImageProcessor {
                     Bitmap.CompressFormat.WEBP
                 }
                 
-                resizedBitmap.compress(format, quality, out)
+                canvasBitmap.compress(format, quality, out)
                 out.flush()
                 out.close()
 
@@ -59,8 +66,18 @@ object ImageProcessor {
             }
 
             originalBitmap.recycle()
-            if (resizedBitmap != originalBitmap) {
-                resizedBitmap.recycle()
+            if (scaledBitmap != originalBitmap) scaledBitmap.recycle()
+            canvasBitmap.recycle()
+
+            if (success) {
+                val finalOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(outputFile.absolutePath, finalOptions)
+                android.util.Log.i(
+                    "Tel2What", 
+                    "ImageProcessor:processStaticSticker SUCCESS size=${outputFile.length() / 1024}KB dimen=${finalOptions.outWidth}x${finalOptions.outHeight} file=${outputFile.name}"
+                )
+            } else {
+                android.util.Log.e("Tel2What", "ImageProcessor:processStaticSticker FAILED file=${outputFile.name}")
             }
 
             return success
@@ -104,6 +121,17 @@ object ImageProcessor {
             originalBitmap.recycle()
             if (resizedBitmap != originalBitmap) {
                 resizedBitmap.recycle()
+            }
+
+            if (success) {
+                val finalOptions = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(outputFile.absolutePath, finalOptions)
+                android.util.Log.i(
+                    "Tel2What", 
+                    "ImageProcessor:processTrayIcon SUCCESS size=${outputFile.length() / 1024}KB dimen=${finalOptions.outWidth}x${finalOptions.outHeight} file=${outputFile.name}"
+                )
+            } else {
+                android.util.Log.e("Tel2What", "ImageProcessor:processTrayIcon FAILED file=${outputFile.name}")
             }
 
             return success

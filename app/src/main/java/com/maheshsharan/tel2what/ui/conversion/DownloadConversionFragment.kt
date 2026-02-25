@@ -60,20 +60,24 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
 
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.progressData.collect { progress ->
-                val overallTotal = progress.overallTotal.coerceAtLeast(1)
-                val overallCompleted = progress.overallCompleted.coerceIn(0, overallTotal)
+                val batchTotal = progress.batchTotal.coerceAtLeast(1)
+                val batchCompleted = progress.batchCompleted.coerceIn(0, batchTotal)
 
-                progressBar.max = overallTotal
-                progressBar.progress = overallCompleted
+                progressBar.max = batchTotal
+                progressBar.progress = batchCompleted
 
-                val percent = (overallCompleted * 100) / overallTotal
+                val percent = (batchCompleted * 100) / batchTotal
                 txtPercent.text = "$percent%"
 
-                val etaStr = formatEta(progress.etaSeconds)
-                val speedStr = formatSpeed(progress.speedStickersPerSec)
-                txtEtaSpeed.text = "$speedStr • ETA $etaStr"
+                if (progress.isBatchFinished) {
+                    txtEtaSpeed.text = if (progress.isAllFinished) "All stickers downloaded" else "Batch ready. Continue or download more."
+                } else {
+                    val etaStr = formatEta(progress.etaSeconds)
+                    val speedStr = formatSpeed(progress.speedStickersPerSec)
+                    txtEtaSpeed.text = "$speedStr • ETA $etaStr"
+                }
 
-                txtOverallProgress.text = "$overallCompleted / $overallTotal"
+                txtOverallProgress.text = "Overall: ${progress.overallCompleted} / ${progress.overallTotal}"
 
                 btnDownloadMore.isEnabled = progress.isBatchFinished && !progress.isAllFinished && !progress.isError
                 btnContinue.isEnabled = progress.readyCount > 0 && !progress.isError
