@@ -35,6 +35,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         val cardManualUpload: MaterialCardView = view.findViewById(R.id.cardManualUpload)
         val btnStorage: ImageView = view.findViewById(R.id.btnStorage)
         val recyclerRecentPacks: RecyclerView = view.findViewById(R.id.recyclerRecentPacks)
+        val bottomNavigation: com.google.android.material.bottomnavigation.BottomNavigationView = view.findViewById(R.id.bottomNavigation)
 
         // Setup RecyclerView
         adapter = RecentPacksAdapter { pack ->
@@ -63,6 +64,23 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
 
         btnStorage.setOnClickListener {
             findNavController().navigate(R.id.action_homeFragment_to_storageManagementFragment)
+        }
+
+        // Bottom Navigation
+        bottomNavigation.selectedItemId = R.id.nav_home
+        bottomNavigation.setOnItemSelectedListener { item ->
+            when (item.itemId) {
+                R.id.nav_home -> true
+                R.id.nav_packs -> {
+                    findNavController().navigate(R.id.action_homeFragment_to_storageManagementFragment)
+                    true
+                }
+                R.id.nav_settings -> {
+                    findNavController().navigate(R.id.action_homeFragment_to_settingsFragment)
+                    true
+                }
+                else -> false
+            }
         }
     }
 

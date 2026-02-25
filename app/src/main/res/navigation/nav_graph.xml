@@ -48,6 +48,9 @@
         <action
             android:id="@+id/action_homeFragment_to_storageManagementFragment"
             app:destination="@id/storageManagementFragment" />
+        <action
+            android:id="@+id/action_homeFragment_to_settingsFragment"
+            app:destination="@id/settingsFragment" />
     </fragment>
 
     <fragment
@@ -110,5 +113,10 @@
         android:id="@+id/storageManagementFragment"
         android:name="com.maheshsharan.tel2what.ui.storage.StorageManagementFragment"
         android:label="StorageManagementFragment" />
+
+    <fragment
+        android:id="@+id/settingsFragment"
+        android:name="com.maheshsharan.tel2what.ui.settings.SettingsFragment"
+        android:label="SettingsFragment" />
 
 </navigation>

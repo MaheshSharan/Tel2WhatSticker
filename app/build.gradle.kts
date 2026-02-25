@@ -106,8 +106,5 @@ dependencies {
     // Animation & Media Processing
     implementation("com.airbnb.android:lottie:6.0.0")
 
-    // Debugging, Profiling & Hardened Testing
-    debugImplementation("com.squareup.leakcanary:leakcanary-android:2.14")
-
     testImplementation("junit:junit:4.13.2")
 }
