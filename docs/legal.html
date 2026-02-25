@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Legal Documents - Tel2What</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #34C17B;
+            --secondary: #128C7E;
+            --dark: #0A0A0A;
+            --light-bg: #F5F5F5;
+            --card-bg: #FFFFFF;
+            --text-primary: #1F1F1F;
+            --text-secondary: #666666;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: var(--light-bg);
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: white;
+            text-decoration: none;
+            margin-top: 15px;
+            opacity: 0.9;
+            transition: opacity 0.3s;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .legal-cards {
+            display: grid;
+            gap: 25px;
+        }
+
+        .legal-card {
+            background: var(--card-bg);
+            padding: 35px;
+            border-radius: 16px;
+            box-shadow: var(--shadow);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: var(--text-primary);
+            display: block;
+            border-left: 5px solid var(--primary);
+        }
+
+        .legal-card:hover {
+            transform: translateX(10px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .legal-card h2 {
+            font-size: 1.8em;
+            margin-bottom: 12px;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .legal-card p {
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        .icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.5em;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px 20px;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Legal Documents</h1>
+        <p>Transparency and trust are our priorities</p>
+        <a href="index.html" class="back-link">
+            <i class="fas fa-arrow-left"></i>
+            Back to Home
+        </a>
+    </header>
+
+    <div class="container">
+        <div class="legal-cards">
+            <a href="privacy-policy.html" class="legal-card">
+                <h2>
+                    <span class="icon"><i class="fas fa-shield-alt"></i></span>
+                    Privacy Policy
+                </h2>
+                <p>Learn how we protect your privacy. Spoiler: We don't collect any data at all.</p>
+            </a>
+
+            <a href="terms-of-service.html" class="legal-card">
+                <h2>
+                    <span class="icon"><i class="fas fa-file-contract"></i></span>
+                    Terms of Service
+                </h2>
+                <p>The rules and guidelines for using Tel2What. Simple and straightforward.</p>
+            </a>
+
+            <a href="open-source-licenses.html" class="legal-card">
+                <h2>
+                    <span class="icon"><i class="fas fa-code"></i></span>
+                    Open Source Licenses
+                </h2>
+                <p>All the amazing open source libraries that make Tel2What possible.</p>
+            </a>
+        </div>
+    </div>
+
+    <footer>
+        <p>&copy; 2026 Tel2What. Open Source under MIT License.</p>
+    </footer>
+</body>
+</html>
