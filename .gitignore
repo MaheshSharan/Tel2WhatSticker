@@ -15,3 +15,8 @@ sampleapp/
 
 # Ignore local configuration files (contains sensitive data)
 local.properties
+
+# Ignore keystore files (contains signing keys)
+*.jks
+*.keystore
+release-key.jks
