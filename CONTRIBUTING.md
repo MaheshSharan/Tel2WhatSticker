@@ -5,7 +5,7 @@ Thank you for your interest in contributing to Tel2What! This document provides 
 ## Getting Started
 
 Before you begin, please:
-1. Read our [Full Documentation](.qoder/repowiki/en/content/) to understand the project architecture
+1. Read our [Full Documentation](documentation/en/content/) to understand the project architecture
 2. Check existing [Issues](https://github.com/MaheshSharan/Tel2WhatSticker/issues) and [Pull Requests](https://github.com/MaheshSharan/Tel2WhatSticker/pulls)
 3. Review the [Code of Conduct](#code-of-conduct)
 
@@ -48,8 +48,8 @@ Tel2What follows a clean architecture pattern with clear separation of concerns:
 - **Native Layer**: JNI bridge to libwebp for encoding
 
 For detailed architecture documentation, see:
-- [Architecture Overview](.qoder/repowiki/en/content/Architecture%20Overview/)
-- [Technical Deep Dive](.qoder/repowiki/en/content/Technical%20Deep%20Dive/)
+- [Architecture Overview](documentation/en/content/Architecture%20Overview/)
+- [Technical Deep Dive](documentation/en/content/Technical%20Deep%20Dive/)
 
 ## How to Contribute
 
@@ -152,13 +152,13 @@ If contributing to native WebP encoding:
 4. Test on both arm64-v8a and armeabi-v7a architectures
 5. Document JNI interfaces clearly
 
-See [Native WebP Encoding](.qoder/repowiki/en/content/Technical%20Deep%20Dive/) documentation for details.
+See [Native WebP Encoding](documentation/en/content/Technical%20Deep%20Dive/) documentation for details.
 
 ## Documentation
 
 When adding features:
 
-1. Update relevant documentation in `.qoder/repowiki/`
+1. Update relevant documentation in `documentation/`
 2. Add code comments for complex logic
 3. Update README.md if needed
 4. Include usage examples
@@ -189,7 +189,7 @@ When adding features:
 
 ## Questions?
 
-- Check the [Full Documentation](.qoder/repowiki/en/content/)
+- Check the [Full Documentation](documentation/en/content/)
 - Open a [Discussion](https://github.com/MaheshSharan/Tel2WhatSticker/discussions)
 - Create an [Issue](https://github.com/MaheshSharan/Tel2WhatSticker/issues)
 

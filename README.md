@@ -110,7 +110,7 @@ cd Tel2WhatSticker
 
 ### Documentation
 
-📚 **[Full Documentation](.qoder/repowiki/en/content/)** - Comprehensive technical documentation including:
+📚 **[Full Documentation](documentation/en/content/)** - Comprehensive technical documentation including:
 - Architecture Overview & Design Patterns
 - API Reference & Integration Guides  
 - Core Features Deep Dive
@@ -119,9 +119,9 @@ cd Tel2WhatSticker
 - Contributing Guidelines
 
 **Quick Links:**
-- [Getting Started](.qoder/repowiki/en/content/Getting%20Started.md) - Setup and build instructions
-- [Architecture Overview](.qoder/repowiki/en/content/Architecture%20Overview/) - System design and patterns
-- [Technical Deep Dive](.qoder/repowiki/en/content/Technical%20Deep%20Dive/) - Implementation details
+- [Getting Started](documentation/en/content/Getting%20Started.md) - Setup and build instructions
+- [Architecture Overview](documentation/en/content/Architecture%20Overview/) - System design and patterns
+- [Technical Deep Dive](documentation/en/content/Technical%20Deep%20Dive/) - Implementation details
 - [Animated Sticker Pipeline](assets/docs/animated_pipe.md) - Conversion system internals
 
 ## Performance
@@ -133,7 +133,7 @@ cd Tel2WhatSticker
 
 ## Contributing
 
-Contributions are welcome! Please check out our [documentation](.qoder/repowiki/en/content/) for architecture details and development guidelines.
+Contributions are welcome! Please check out our [documentation](documentation/en/content/) for architecture details and development guidelines.
 
 ## Documentation
 
