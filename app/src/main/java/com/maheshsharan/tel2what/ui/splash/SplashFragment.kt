@@ -2,9 +2,11 @@ package com.maheshsharan.tel2what.ui.splash
 
 import android.os.Bundle
 import android.view.View
+import android.widget.TextView
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
+import com.maheshsharan.tel2what.BuildConfig
 import com.maheshsharan.tel2what.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -18,7 +20,10 @@ class SplashFragment : Fragment(R.layout.fragment_splash) {
         val logo = view.findViewById<View>(R.id.splashLogo)
         val title = view.findViewById<View>(R.id.splashTitle)
         val subtitle = view.findViewById<View>(R.id.splashSubtitle)
-        val version = view.findViewById<View>(R.id.splashVersion)
+        val version = view.findViewById<TextView>(R.id.splashVersion)
+        
+        // Set version dynamically from BuildConfig
+        version?.text = "v${BuildConfig.VERSION_NAME} • Crafted by Mahesh Sharan"
 
         // Set initial alpha to 0
         logo?.alpha = 0f

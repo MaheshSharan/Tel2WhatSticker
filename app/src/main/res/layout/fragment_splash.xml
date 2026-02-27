@@ -60,7 +60,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginBottom="32dp"
-        android:text="v1.1 • Crafted by Mahesh Sharan"
+        android:text="v1.1.2 • Crafted by Mahesh Sharan"
         android:textColor="@color/text_sec_light"
         android:textSize="12sp"
         android:fontFamily="sans-serif"

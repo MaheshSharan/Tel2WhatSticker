@@ -20,3 +20,10 @@ local.properties
 *.jks
 *.keystore
 release-key.jks
+
+# Ignore release process temporary files
+*-aligned.apk
+*-unsigned.apk
+app/build/outputs/apk/release/*.apk
+app/build/outputs/apk/release/*.apk.idsig
+RELEASE_PROCESS.md
