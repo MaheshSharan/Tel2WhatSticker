@@ -8,6 +8,9 @@ import androidx.lifecycle.viewModelScope
 import com.maheshsharan.tel2what.data.local.entity.StickerEntity
 import com.maheshsharan.tel2what.data.local.entity.StickerPackEntity
 import com.maheshsharan.tel2what.data.repository.StickerRepository
+import com.maheshsharan.tel2what.engine.ConversionConfig
+import com.maheshsharan.tel2what.engine.StickerConversionResult
+import com.maheshsharan.tel2what.engine.StaticStickerConverter
 import com.maheshsharan.tel2what.utils.ImageProcessor
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -31,6 +34,9 @@ class ManualUploadViewModel(
     private val repository: StickerRepository,
     private val context: Context
 ) : ViewModel() {
+
+    private val staticConverter = StaticStickerConverter()
+    private val config = ConversionConfig()
 
     private val _selectedFiles = MutableStateFlow<List<ManualUploadItem>>(emptyList())
     val selectedFiles: StateFlow<List<ManualUploadItem>> = _selectedFiles.asStateFlow()
@@ -79,7 +85,9 @@ class ManualUploadViewModel(
                         }
 
                         val finalFile = File(packDir, "custom_${index}.webp")
-                        val success = ImageProcessor.processStaticSticker(tempFile, finalFile)
+                        // Use StaticStickerConverter instead of ImageProcessor.processStaticSticker
+                        val result = staticConverter.convert(tempFile, finalFile, config)
+                        val success = result is StickerConversionResult.Success
 
                         if (success) {
                             if (index == 0) {

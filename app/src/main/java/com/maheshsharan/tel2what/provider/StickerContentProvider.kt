@@ -10,7 +10,6 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.util.Log
 import com.maheshsharan.tel2what.data.local.AppDatabase
-import kotlinx.coroutines.runBlocking
 import java.io.File
 
 class StickerContentProvider : ContentProvider() {
@@ -109,30 +108,29 @@ class StickerContentProvider : ContentProvider() {
             )
         )
 
-        runBlocking {
-            val packs = database.stickerDao().getAllPacksSync()
-            val filtered = if (identifier != null) packs.filter { it.identifier == identifier } else packs
-            for (pack in filtered) {
-                Log.i(TAG, "Provider:packMetadata id=${pack.identifier} tray=${pack.trayImageFile}")
-                cursor.addRow(
-                    arrayOf(
-                        pack.identifier,
-                        pack.name,
-                        pack.publisher,
-                        // WhatsApp expects just the filename, not the full path
-                        File(pack.trayImageFile).name,
-                        "",   // android_play_store_link — not applicable, leave empty
-                        "",   // ios_app_download_link   — not applicable, leave empty
-                        pack.publisherEmail,
-                        pack.publisherWebsite,
-                        pack.privacyPolicyWebsite,
-                        pack.licenseAgreementWebsite,
-                        pack.imageDataVersion,
-                        if (pack.avoidCache) 1 else 0,
-                        if (pack.animatedStickerPack) 1 else 0
-                    )
+        // Use synchronous DAO call directly - no runBlocking needed
+        val packs = database.stickerDao().getAllPacksSyncBlocking()
+        val filtered = if (identifier != null) packs.filter { it.identifier == identifier } else packs
+        for (pack in filtered) {
+            Log.i(TAG, "Provider:packMetadata id=${pack.identifier} tray=${pack.trayImageFile}")
+            cursor.addRow(
+                arrayOf(
+                    pack.identifier,
+                    pack.name,
+                    pack.publisher,
+                    // WhatsApp expects just the filename, not the full path
+                    File(pack.trayImageFile).name,
+                    "",   // android_play_store_link — not applicable, leave empty
+                    "",   // ios_app_download_link   — not applicable, leave empty
+                    pack.publisherEmail,
+                    pack.publisherWebsite,
+                    pack.privacyPolicyWebsite,
+                    pack.licenseAgreementWebsite,
+                    pack.imageDataVersion,
+                    if (pack.avoidCache) 1 else 0,
+                    if (pack.animatedStickerPack) 1 else 0
                 )
-            }
+            )
         }
         cursor.setNotificationUri(context!!.contentResolver, Uri.parse("content://$AUTHORITY/$METADATA"))
         return cursor
@@ -150,18 +148,17 @@ class StickerContentProvider : ContentProvider() {
             )
         )
 
-        runBlocking {
-            val stickers = database.stickerDao().getSelectedReadyStickersForPackSync(identifier)
-            Log.i(TAG, "Provider:getStickers id=$identifier count=${stickers.size}")
-            for (sticker in stickers) {
-                cursor.addRow(
-                    arrayOf(
-                        File(sticker.imageFile).name,
-                        sticker.emojis,           // comma-separated, WhatsApp splits on ","
-                        sticker.accessibilityText
-                    )
+        // Use synchronous DAO call directly - no runBlocking needed
+        val stickers = database.stickerDao().getSelectedReadyStickersForPackSyncBlocking(identifier)
+        Log.i(TAG, "Provider:getStickers id=$identifier count=${stickers.size}")
+        for (sticker in stickers) {
+            cursor.addRow(
+                arrayOf(
+                    File(sticker.imageFile).name,
+                    sticker.emojis,           // comma-separated, WhatsApp splits on ","
+                    sticker.accessibilityText
                 )
-            }
+            )
         }
         cursor.setNotificationUri(context!!.contentResolver, Uri.parse("content://$AUTHORITY/$STICKERS/$identifier"))
         return cursor
@@ -201,37 +198,37 @@ class StickerContentProvider : ContentProvider() {
         val packId   = segments[1]
         val fileName = segments[2]
 
-        return runBlocking {
-            val file = resolveFile(packId, fileName)
-            if (file != null && file.exists()) {
-                Log.i(TAG, "Provider:openAssetFile serving file=${file.absolutePath}")
-                try {
-                    val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
-                    AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
-                } catch (e: Exception) {
-                    Log.e(TAG, "Provider:openAssetFile failed to open file", e)
-                    null
-                }
-            } else {
-                Log.e(TAG, "Provider:openAssetFile file not found packId=$packId fileName=$fileName")
+        // Use synchronous resolution - no runBlocking needed
+        val file = resolveFileBlocking(packId, fileName)
+        return if (file != null && file.exists()) {
+            Log.i(TAG, "Provider:openAssetFile serving file=${file.absolutePath}")
+            try {
+                val pfd = ParcelFileDescriptor.open(file, ParcelFileDescriptor.MODE_READ_ONLY)
+                AssetFileDescriptor(pfd, 0, AssetFileDescriptor.UNKNOWN_LENGTH)
+            } catch (e: Exception) {
+                Log.e(TAG, "Provider:openAssetFile failed to open file", e)
                 null
             }
+        } else {
+            Log.e(TAG, "Provider:openAssetFile file not found packId=$packId fileName=$fileName")
+            null
         }
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // resolveFile(): looks up a file by pack + filename from the DB.
+    // resolveFileBlocking(): looks up a file by pack + filename from the DB.
     //   Checks tray icon first, then individual stickers.
+    //   Uses synchronous DAO calls - safe for ContentProvider context.
     // ─────────────────────────────────────────────────────────────────────────
-    private suspend fun resolveFile(packId: String, fileName: String): File? {
+    private fun resolveFileBlocking(packId: String, fileName: String): File? {
         // 1. Check tray icon
-        val pack = database.stickerDao().getPackById(packId)
+        val pack = database.stickerDao().getPackByIdBlocking(packId)
         if (pack != null && File(pack.trayImageFile).name == fileName) {
             return File(pack.trayImageFile)
         }
 
         // 2. Check sticker files (all, not just selected — so tray icon alt paths also work)
-        val stickers = database.stickerDao().getStickersForPackSync(packId)
+        val stickers = database.stickerDao().getStickersForPackSyncBlocking(packId)
         return stickers
             .map { File(it.imageFile) }
             .firstOrNull { it.name == fileName }

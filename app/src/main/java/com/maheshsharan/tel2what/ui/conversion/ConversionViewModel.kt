@@ -277,22 +277,19 @@ class ConversionViewModel(
                             Log.i(TAG, "Conversion:stickerReady idx=$index id=$stickerId file=${finalFile.name} size=${finalFile.length()} isAnimated=${result.isAnimated}")
                             markReady(globalIndex, stickerId, finalFile.absolutePath)
                         } else {
-                            val reason = when (result) {
+                            when (result) {
                                 is com.maheshsharan.tel2what.engine.StickerConversionResult.Failed -> {
                                     val exceptionMsg = result.exception?.message ?: "no exception"
                                     Log.e(TAG, "Conversion:stickerFail idx=$index id=$stickerId type=Failed reason='${result.reason}' exception='$exceptionMsg'")
                                     if (result.exception != null) {
                                         Log.e(TAG, "Conversion:stickerFailStackTrace idx=$index", result.exception)
                                     }
-                                    result.reason
                                 }
                                 is com.maheshsharan.tel2what.engine.StickerConversionResult.ValidationFailed -> {
                                     Log.e(TAG, "Conversion:stickerFail idx=$index id=$stickerId type=ValidationFailed reason='${result.reason}'")
-                                    result.reason
                                 }
                                 else -> {
                                     Log.e(TAG, "Conversion:stickerFail idx=$index id=$stickerId type=Unknown")
-                                    "Unknown failure"
                                 }
                             }
                             markFailed(globalIndex, stickerId)

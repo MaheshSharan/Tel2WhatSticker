@@ -72,6 +72,18 @@ class ExportFragment : Fragment(R.layout.fragment_export) {
             val name = etPackName.text.toString().trim()
             val author = etAuthorName.text.toString().trim()
 
+            // Validate required fields before export
+            if (name.isEmpty()) {
+                etPackName.error = "Pack name is required"
+                etPackName.requestFocus()
+                return@setOnClickListener
+            }
+            if (author.isEmpty()) {
+                etAuthorName.error = "Author name is required"
+                etAuthorName.requestFocus()
+                return@setOnClickListener
+            }
+
             viewLifecycleOwner.lifecycleScope.launch {
                 val success = viewModel.updatePackDetailsAndSave(name, author)
                 if (success) {

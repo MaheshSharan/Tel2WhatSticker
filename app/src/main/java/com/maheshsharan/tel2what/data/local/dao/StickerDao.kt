@@ -33,14 +33,29 @@ interface StickerDao {
     @Query("SELECT * FROM sticker_packs")
     suspend fun getAllPacksSync(): List<StickerPackEntity>
 
+    // Blocking versions for ContentProvider (which cannot use coroutines)
+    @Query("SELECT * FROM sticker_packs")
+    fun getAllPacksSyncBlocking(): List<StickerPackEntity>
+
+    @Query("SELECT * FROM sticker_packs WHERE identifier = :packId LIMIT 1")
+    fun getPackByIdBlocking(packId: String): StickerPackEntity?
+
     @Query("SELECT * FROM stickers WHERE packId = :packId")
     fun getStickersForPack(packId: String): Flow<List<StickerEntity>>
 
     @Query("SELECT * FROM stickers WHERE packId = :packId")
     suspend fun getStickersForPackSync(packId: String): List<StickerEntity>
 
+    // Blocking version for ContentProvider
+    @Query("SELECT * FROM stickers WHERE packId = :packId")
+    fun getStickersForPackSyncBlocking(packId: String): List<StickerEntity>
+
     @Query("SELECT * FROM stickers WHERE packId = :packId AND status = 'READY' AND isSelected = 1")
     suspend fun getSelectedReadyStickersForPackSync(packId: String): List<StickerEntity>
+
+    // Blocking version for ContentProvider
+    @Query("SELECT * FROM stickers WHERE packId = :packId AND status = 'READY' AND isSelected = 1")
+    fun getSelectedReadyStickersForPackSyncBlocking(packId: String): List<StickerEntity>
 
     @Query("UPDATE stickers SET status = :status WHERE id = :stickerId")
     suspend fun updateStickerStatus(stickerId: Long, status: String)

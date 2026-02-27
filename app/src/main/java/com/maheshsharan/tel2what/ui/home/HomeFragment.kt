@@ -3,6 +3,7 @@ package com.maheshsharan.tel2what.ui.home
 import android.os.Bundle
 import android.view.View
 import android.widget.ImageView
+import android.widget.Toast
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -51,6 +52,18 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
         viewLifecycleOwner.lifecycleScope.launch {
             viewModel.recentPacks.collect { packs ->
                 adapter?.submitList(packs)
+            }
+        }
+
+        // Observe UI State for error handling
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.uiState.collect { state ->
+                when (state) {
+                    is HomeUiState.Error -> {
+                        Toast.makeText(requireContext(), state.message, Toast.LENGTH_LONG).show()
+                    }
+                    else -> { /* Loading and Success states handled by recentPacks flow */ }
+                }
             }
         }
 

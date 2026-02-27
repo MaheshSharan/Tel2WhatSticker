@@ -70,7 +70,7 @@ class TelegramImportViewModel(private val repository: StickerRepository) : ViewM
         val prefix1 = "https://t.me/addstickers/"
         val prefix2 = "t.me/addstickers/"
         
-        var packName = ""
+        val packName: String
         
         if (trimmedUrl.startsWith(prefix1)) {
             packName = trimmedUrl.removePrefix(prefix1)

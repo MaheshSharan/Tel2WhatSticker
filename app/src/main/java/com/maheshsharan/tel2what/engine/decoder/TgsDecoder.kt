@@ -33,7 +33,7 @@ object TgsDecoder {
         }
         
         val workingDir = File(cacheDir, "tgs_decode_${System.currentTimeMillis()}")
-        var jsonFile: File? = null
+        var jsonFile: File?
 
         try {
             workingDir.mkdirs()

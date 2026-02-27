@@ -6,7 +6,6 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
-import androidx.appcompat.widget.Toolbar
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -42,7 +41,6 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
         val txtEtaSpeed: TextView = view.findViewById(R.id.txtEtaSpeed)
         val txtPercent: TextView = view.findViewById(R.id.txtPercent)
         val txtOverallProgress: TextView = view.findViewById(R.id.txtOverallProgress)
-        val toolbar: Toolbar = view.findViewById(R.id.toolbar)
 
         // Setup RecyclerView
         adapter = DownloadStickerAdapter()
