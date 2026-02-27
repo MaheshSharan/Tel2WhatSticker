@@ -82,80 +82,58 @@ Your privacy matters. This app is built with transparency and user trust as core
 
 - Android 11 (API 30) or higher
 - 100MB free storage (for temporary conversion files)
-- Telegram Bot Token (for importing sticker packs)
 
-## Tech Stack
+## Quick Start
 
-- **Language**: Kotlin
-- **UI**: Material Design 3, Navigation Component
-- **Database**: Room
-- **Async**: Kotlin Coroutines + Flow
-- **Networking**: OkHttp + Retrofit
-- **Image Loading**: Glide
-- **Native**: C++ with CMake, libwebp
-- **Animation**: Lottie (for TGS stickers)
+1. Download the latest APK from [Releases](https://github.com/MaheshSharan/Tel2WhatSticker/releases)
+2. Install on your Android device
+3. Paste a Telegram sticker pack link
+4. Convert and export to WhatsApp
 
-## Architecture
+## For Developers
 
-```
-app/
-├── cpp/                    # Native WebP encoder (JNI)
-├── engine/                 # Conversion pipeline
-│   ├── decoder/           # TGS & WebM decoders
-│   ├── encoder/           # Animated WebP encoder
-│   └── frame/             # Frame processing utilities
-├── data/                  # Repository & data sources
-├── ui/                    # Fragments & ViewModels
-└── utils/                 # Helper utilities
-```
+### Building from Source
 
-## Building
-
-### Prerequisites
-
+**Prerequisites:**
 - Android Studio Hedgehog or later
 - JDK 17
 - Android SDK 34
 - NDK (for native WebP encoding)
 
-### Telegram Bot Token
-
-The app uses the Telegram Bot API to fetch sticker metadata. A demo bot token is included in the source for quick testing. For production use or if you encounter rate limits, create your own bot:
-
-1. Message [@BotFather](https://t.me/BotFather) on Telegram
-2. Create a new bot with `/newbot`
-3. Replace the token in `TelegramBotApi.kt`:
-   ```kotlin
-   private val botToken = "YOUR_BOT_TOKEN_HERE"
-   ```
-
-**Note**: The included token is for a read-only bot with no access to private data. It's safe for testing but may hit rate limits with heavy usage.
-
-### Build Commands
+**Build:**
 
 ```bash
-# Clone the repository
 git clone https://github.com/MaheshSharan/Tel2WhatSticker.git
 cd Tel2WhatSticker
-
-# Build debug APK
 ./gradlew assembleDebug
-
-# Install on connected device
-./gradlew installDebug
-
-# Build release APK
-./gradlew assembleRelease
 ```
 
-## Performance Metrics
+### Documentation
 
-| Operation | Duration | Notes |
-|-----------|----------|-------|
-| WebM Frame Extraction | ~400ms | 30 frames @ 10fps |
-| TGS Frame Rendering | ~600ms | Vector to raster |
-| WebP Encoding | ~2-3s | Native libwebp, quality=25 |
-| Total Conversion | ~3-4s | End-to-end per sticker |
+📚 **[Full Documentation](.qoder/repowiki/en/content/)** - Comprehensive technical documentation including:
+- Architecture Overview & Design Patterns
+- API Reference & Integration Guides  
+- Core Features Deep Dive
+- Performance Optimization
+- Build & Deployment Guide
+- Contributing Guidelines
+
+**Quick Links:**
+- [Getting Started](.qoder/repowiki/en/content/Getting%20Started.md) - Setup and build instructions
+- [Architecture Overview](.qoder/repowiki/en/content/Architecture%20Overview/) - System design and patterns
+- [Technical Deep Dive](.qoder/repowiki/en/content/Technical%20Deep%20Dive/) - Implementation details
+- [Animated Sticker Pipeline](assets/docs/animated_pipe.md) - Conversion system internals
+
+## Performance
+
+- **WebP Encoding**: ~2-3s per animated sticker (native libwebp)
+- **Total Conversion**: ~3-4s end-to-end per sticker
+- **Memory Efficient**: Proper bitmap recycling prevents OOM
+- **Hardware Accelerated**: MediaCodec for video decoding
+
+## Contributing
+
+Contributions are welcome! Please check out our [documentation](.qoder/repowiki/en/content/) for architecture details and development guidelines.
 
 ## Documentation
 
