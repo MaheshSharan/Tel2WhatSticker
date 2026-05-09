@@ -15,10 +15,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import com.bumptech.glide.Glide
 import com.maheshsharan.tel2what.R
-import com.maheshsharan.tel2what.data.local.AppDatabase
-import com.maheshsharan.tel2what.data.network.FileDownloader
-import com.maheshsharan.tel2what.data.network.TelegramBotApi
-import com.maheshsharan.tel2what.data.repository.StickerRepository
+import com.maheshsharan.tel2what.Tel2WhatApplication
 import kotlinx.coroutines.launch
 import java.io.File
 
@@ -36,8 +33,7 @@ class ExportFragment : Fragment(R.layout.fragment_export) {
 
         val packName = arguments?.getString("packName") ?: return
 
-        val database = AppDatabase.getDatabase(requireContext())
-        val repository = StickerRepository(database.stickerDao(), TelegramBotApi(), FileDownloader())
+        val repository = (requireActivity().application as Tel2WhatApplication).appContainer.repository
         val factory = ExportViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[ExportViewModel::class.java]
 

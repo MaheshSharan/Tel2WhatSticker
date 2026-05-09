@@ -12,10 +12,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.card.MaterialCardView
 import com.maheshsharan.tel2what.R
-import com.maheshsharan.tel2what.data.local.AppDatabase
-import com.maheshsharan.tel2what.data.network.FileDownloader
-import com.maheshsharan.tel2what.data.network.TelegramBotApi
-import com.maheshsharan.tel2what.data.repository.StickerRepository
+import com.maheshsharan.tel2what.Tel2WhatApplication
 import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment(R.layout.fragment_home) {
@@ -26,9 +23,7 @@ class HomeFragment : Fragment(R.layout.fragment_home) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        // Setup ViewModel
-        val database = AppDatabase.getDatabase(requireContext())
-        val repository = StickerRepository(database.stickerDao(), TelegramBotApi(), FileDownloader())
+        val repository = (requireActivity().application as Tel2WhatApplication).appContainer.repository
         val factory = HomeViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[HomeViewModel::class.java]
 

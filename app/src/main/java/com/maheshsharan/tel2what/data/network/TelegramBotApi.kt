@@ -11,11 +11,17 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 
-class TelegramBotApi {
-
-    // Hardcoded bot token (replace with your own if building from source)
-    private val botToken = "8222863145:AAFBPD95I9qNsKXaxhmiT0lMOxqMecbwdi4"
-    private val client = OkHttpClient()
+/**
+ * Wraps the Telegram Bot API.
+ *
+ * @param botToken Must be supplied from BuildConfig.TELEGRAM_BOT_TOKEN — never hardcoded.
+ *                 Set TELEGRAM_BOT_TOKEN=<your token> in local.properties (git-ignored).
+ * @param client   Shared OkHttpClient — callers must not create a new instance per call-site.
+ */
+class TelegramBotApi(
+    private val botToken: String,
+    private val client: OkHttpClient
+) {
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 

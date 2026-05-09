@@ -15,9 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.maheshsharan.tel2what.R
-import com.maheshsharan.tel2what.data.local.AppDatabase
-import com.maheshsharan.tel2what.data.network.FileDownloader
-import com.maheshsharan.tel2what.data.network.TelegramBotApi
+import com.maheshsharan.tel2what.Tel2WhatApplication
 import com.maheshsharan.tel2what.data.repository.StickerRepository
 import com.maheshsharan.tel2what.ui.selection.TrayIconAdapter
 import com.maheshsharan.tel2what.ui.selection.TrayIconViewModel
@@ -47,8 +45,7 @@ class TrayIconSelectionFragment : Fragment(R.layout.fragment_tray_icon_selection
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val database = AppDatabase.getDatabase(requireContext())
-        repository = StickerRepository(database.stickerDao(), TelegramBotApi(), FileDownloader())
+        repository = (requireActivity().application as Tel2WhatApplication).appContainer.repository
         val factory = TrayIconViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[TrayIconViewModel::class.java]
 

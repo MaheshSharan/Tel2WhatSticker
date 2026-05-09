@@ -3,8 +3,15 @@ package com.maheshsharan.tel2what
 import android.app.Application
 import android.os.StrictMode
 import android.util.Log
+import com.maheshsharan.tel2what.di.AppContainer
 
 class Tel2WhatApplication : Application() {
+
+    /**
+     * App-level DI container. Lazy so it initialises after super.onCreate()
+     * has completed — safe because Room requires an Application context.
+     */
+    val appContainer: AppContainer by lazy { AppContainer(this) }
 
     override fun onCreate() {
         super.onCreate()

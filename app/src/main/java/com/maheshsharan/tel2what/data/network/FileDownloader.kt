@@ -8,9 +8,13 @@ import okhttp3.Request
 import java.io.File
 import java.io.FileOutputStream
 
-class FileDownloader {
-
-    private val client = OkHttpClient()
+/**
+ * Downloads raw binary files from URLs.
+ *
+ * @param client Shared OkHttpClient — must be provided by the app-level DI container,
+ *               never constructed inline at call sites.
+ */
+class FileDownloader(private val client: OkHttpClient) {
 
     /**
      * Downloads a file from the provided URL to the specific destination File.

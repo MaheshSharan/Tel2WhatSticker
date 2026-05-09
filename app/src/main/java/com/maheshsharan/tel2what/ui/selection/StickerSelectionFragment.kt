@@ -13,10 +13,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.navigation.fragment.findNavController
 import androidx.recyclerview.widget.RecyclerView
 import com.maheshsharan.tel2what.R
-import com.maheshsharan.tel2what.data.local.AppDatabase
-import com.maheshsharan.tel2what.data.network.FileDownloader
-import com.maheshsharan.tel2what.data.network.TelegramBotApi
-import com.maheshsharan.tel2what.data.repository.StickerRepository
+import com.maheshsharan.tel2what.Tel2WhatApplication
 import kotlinx.coroutines.launch
 
 class StickerSelectionFragment : Fragment(R.layout.fragment_sticker_selection) {
@@ -31,8 +28,7 @@ class StickerSelectionFragment : Fragment(R.layout.fragment_sticker_selection) {
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
 
-        val database = AppDatabase.getDatabase(requireContext())
-        val repository = StickerRepository(database.stickerDao(), TelegramBotApi(), FileDownloader())
+        val repository = (requireActivity().application as Tel2WhatApplication).appContainer.repository
         val factory = SelectionViewModelFactory(repository)
         viewModel = ViewModelProvider(this, factory)[SelectionViewModel::class.java]
 
