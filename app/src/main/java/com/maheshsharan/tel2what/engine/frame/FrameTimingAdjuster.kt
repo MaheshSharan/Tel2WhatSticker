@@ -8,6 +8,7 @@ import android.util.Log
 object FrameTimingAdjuster {
 
     private const val TAG = "Tel2What:FrameAdjuster"
+    private const val MIN_FRAME_DURATION_MS = 8 // WhatsApp minimum frame duration requirement
 
     /**
      * Decimates a sequence of frames by a specified target FPS drop, 
@@ -35,8 +36,7 @@ object FrameTimingAdjuster {
             if (skipCounter >= 1f) {
                 var newDuration = frame.durationMs + accumulatedDurationMs
 
-                // HARD CONSTRAINT: WhatsApp completely invalidates any frame under 8ms duration.
-                if (newDuration < 8) newDuration = 8
+                if (newDuration < MIN_FRAME_DURATION_MS) newDuration = MIN_FRAME_DURATION_MS
 
                 // HARD CONSTRAINT: Global animation duration absolutely cannot exceed 10.000 seconds
                 if (globalDurationMs + newDuration > 10000) {

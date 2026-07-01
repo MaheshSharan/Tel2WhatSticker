@@ -4,12 +4,28 @@ import android.graphics.BitmapFactory
 import android.util.Log
 import java.io.File
 
+/**
+ * Validates converted sticker files against WhatsApp's strict requirements.
+ *
+ * WhatsApp enforces the following constraints for sticker packs:
+ * - Exact dimensions: 512×512 pixels
+ * - Static stickers: ≤100KB file size
+ * - Animated stickers: ≤500KB file size
+ * - Frame duration: ≥8ms per frame (for animated)
+ * - Total duration: ≤10 seconds (for animated)
+ *
+ * This validator catches non-compliant files before export, providing detailed
+ * error messages rather than silent rejection by WhatsApp.
+ */
 object WhatsAppStickerValidator {
 
     /**
-     * Strictly validates an output WebP file against WhatsApp's official constraints.
-     * This ensures the app rejects non-compliant stickers internally, providing 
-     * granular error logs rather than a silent WhatsApp rejection.
+     * Validates a converted WebP sticker file against WhatsApp constraints.
+     *
+     * @param file The output WebP file to validate
+     * @param isAnimated Whether this is an animated sticker (affects size limits)
+     * @param config Conversion configuration containing constraint thresholds
+     * @return [StickerConversionResult.Success] if valid, [StickerConversionResult.ValidationFailed] if constraints violated
      */
     fun validateOutput(file: File, isAnimated: Boolean, config: ConversionConfig): StickerConversionResult {
         Log.i("Tel2What:Validator", "=== VALIDATION START ===")

@@ -4,7 +4,8 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     kotlin("android")
-    kotlin("kapt")
+    id("com.google.devtools.ksp") version "1.9.22-1.0.16"
+    id("io.gitlab.arturbosch.detekt") version "1.23.1"
 }
 
 val localProperties = Properties()
@@ -21,8 +22,8 @@ android {
         applicationId = "com.maheshsharan.tel2what"
         minSdk = 30
         targetSdk = 34
-        versionCode = 3
-        versionName = "1.1.2"
+        versionCode = 4
+        versionName = "1.1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
@@ -103,10 +104,9 @@ dependencies {
     val room_version = "2.6.1"
     implementation("androidx.room:room-runtime:$room_version")
     implementation("androidx.room:room-ktx:$room_version")
-    kapt("androidx.room:room-compiler:$room_version")
+    ksp("androidx.room:room-compiler:$room_version")
     
-    // Networking & Scraping
-    implementation("org.jsoup:jsoup:1.17.2") // Note: Can be removed later
+    // Networking
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     
     // Animation & Media Processing

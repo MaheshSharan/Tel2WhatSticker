@@ -57,6 +57,8 @@ class SelectableStickerAdapter(
                 .load(File(item.entity.imageFile))
                 .into(imgSticker)
 
+            imgSticker.contentDescription = item.entity.accessibilityText
+
             if (item.isSelected) {
                 cardSticker.strokeColor = colorPrimary
                 imgSelected.visibility = View.VISIBLE

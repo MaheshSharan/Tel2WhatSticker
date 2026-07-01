@@ -56,6 +56,8 @@ class RecentPacksAdapter(private val onPackClicked: (StickerPackEntity) -> Unit)
                 imgTrayIcon.setImageResource(android.R.drawable.ic_menu_gallery)
             }
 
+            imgTrayIcon.contentDescription = "${pack.name} sticker pack icon"
+
             itemView.setOnClickListener { onPackClicked(pack) }
         }
     }

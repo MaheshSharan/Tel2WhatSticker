@@ -11,8 +11,16 @@ import java.io.FileOutputStream
 import java.util.zip.GZIPInputStream
 
 /**
- * Validates and decompresses a Telegram `.tgs` (GZIP JSON) file
- * and attempts to parse it into a LottieComposition.
+ * Decodes Telegram TGS (Lottie-based) animated sticker files.
+ *
+ * TGS format is GZIP-compressed JSON containing Lottie animation data.
+ * This decoder:
+ * 1. Decompresses the GZIP archive
+ * 2. Parses the JSON as a Lottie composition
+ * 3. Returns a renderable [LottieComposition]
+ *
+ * TGS files are vector-based animations that need to be rasterized to
+ * bitmap frames for WhatsApp WebP conversion.
  */
 object TgsDecoder {
 

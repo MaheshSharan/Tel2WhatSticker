@@ -1,55 +1,76 @@
 # Changelog
 
-All notable changes to Tel2What will be documented in this file.
+All notable changes to Tel2What - Telegram to WhatsApp Sticker Converter will be documented in this file.
 
-## [1.1.2] - 2026-02-27
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-### Improvements
-- **Faster WhatsApp Integration**: Improved ContentProvider performance to prevent app freezing when exporting sticker packs to WhatsApp
-- **Better Export Experience**: Pack name and author fields now show validation errors if left empty, preventing export failures
-- **Home Screen Error Handling**: Added user feedback when sticker packs fail to load from the database
-
-### Fixed
-- Fixed potential ANR (App Not Responding) issue when WhatsApp queries sticker pack data
-- Fixed memory management in video sticker processing pipeline
-
-### Under the Hood
-- Removed ~350 lines of duplicate and unused code for better maintainability
-- Consolidated image processing functions to reduce code complexity
-- Added synchronous database queries optimized for ContentProvider usage
-
-## [1.1.0] - 2026-02-26
+## [1.1.3] - 2026-07-01
 
 ### Added
-- **Animated Sticker Support**: Full support for TGS (Lottie) and WebM video stickers
-- **Native WebP Encoder**: Hardware-accelerated encoding with ~2-3s conversion time per sticker
-- **Stop Button**: Cancel ongoing conversions at any time
-- **Onboarding Flow**: 3-screen introduction for first-time users
-- **Settings Screen**: About, developer info, and legal documents
-- **Manual Upload**: Upload your own images and GIFs to create custom packs
+- Comprehensive unit tests for core conversion components
+- Accessibility support with contentDescription for all sticker images
+- KDoc documentation for public APIs
+- ProGuard rules for release builds
+- Robolectric test framework for Android unit testing
+- Detekt static analysis configuration
+- GitHub Actions CI pipeline (lint → test → build APK)
 
 ### Changed
-- **UI Redesign**: WhatsApp-inspired grey color scheme for better aesthetics
-- **Performance**: Optimized conversion pipeline with adaptive quality and FPS
-- **Navigation**: Improved back button handling across all screens
+- Migrated from KAPT to KSP for 2× faster build times
+- Updated AndroidX dependencies (core-ktx 1.13.1, material 1.12.0)
+- Improved code documentation with detailed KDoc comments
+- Replaced magic numbers with named constants
+- Bot token now loaded via BuildConfig from local.properties
+
+### Removed
+- Unused Jsoup dependency
+- Hardcoded Telegram bot token from source code
+- Legacy English documentation (79 files, 21k lines)
 
 ### Fixed
-- Memory leaks in bitmap processing
-- Conversion progress tracking accuracy
-- Export screen navigation issues
+- Security: Removed exposed bot token from source code
+- Build: Added ProGuard rules to prevent JNI/Room obfuscation
 
-### Technical
-- Native C++ WebP encoder with JNI bridge
-- Custom WebM decoder using MediaCodec
-- YUV color space conversion for video frames
-- Smart compression to meet 500KB WhatsApp limit
+## [Unreleased]
 
-## [1.0.0] - 2025-12-15
+## [1.1.2] - 2024-12-XX
 
 ### Added
-- Initial release
-- Import Telegram sticker packs via link
-- Convert static stickers to WhatsApp format
-- Batch processing up to 30 stickers
-- Export to WhatsApp
-- Local database for pack management
+- Performance improvements for sticker conversion
+- Enhanced build configuration for proper APK signing
+
+### Changed
+- Updated documentation structure and organization
+- Simplified README with links to comprehensive documentation
+
+### Fixed
+- Splash screen version display now uses BuildConfig dynamically
+- Various bug fixes and stability improvements
+
+## [1.1.1] - 2024-XX-XX
+
+### Fixed
+- Minor bug fixes and performance optimizations
+
+## [1.1.0] - 2024-XX-XX
+
+### Added
+- Initial public release
+- Telegram sticker pack import functionality
+- Support for static, TGS (Lottie), and WEBM animated stickers
+- Native WebP encoding via JNI for optimal performance
+- Manual sticker upload feature
+- WhatsApp content provider for seamless export
+
+### Technical Highlights
+- MVVM architecture with Repository pattern
+- Room database for local persistence
+- Hardware-accelerated MediaCodec for WEBM decoding
+- Custom YUV to RGB color space conversion
+- Adaptive compression loop to meet WhatsApp's 500KB limit
+
+[Unreleased]: https://github.com/MaheshSharan/Tel2WhatSticker/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/MaheshSharan/Tel2WhatSticker/releases/tag/v1.1.2
+[1.1.1]: https://github.com/MaheshSharan/Tel2WhatSticker/releases/tag/v1.1.1
+[1.1.0]: https://github.com/MaheshSharan/Tel2WhatSticker/releases/tag/v1.1.0

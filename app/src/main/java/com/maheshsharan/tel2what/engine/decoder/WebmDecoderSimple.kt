@@ -14,8 +14,19 @@ import kotlinx.coroutines.yield
 import kotlin.math.min
 
 /**
- * Simplified WebM decoder using ByteBuffer output instead of Surface rendering.
- * This avoids YUV/RGBA format mismatch issues.
+ * Decodes Telegram WEBM (video) sticker files to bitmap frames.
+ *
+ * Uses Android's hardware-accelerated MediaCodec for VP8/VP9 video decoding.
+ * The decoder:
+ * 1. Extracts video stream via MediaExtractor
+ * 2. Decodes frames using MediaCodec (ByteBuffer output mode)
+ * 3. Converts YUV color space to RGB bitmaps
+ * 4. Samples frames at target FPS to reduce frame count
+ *
+ * This avoids Surface rendering to prevent YUV/RGBA format mismatch issues.
+ * The resulting bitmaps are ready for WebP encoding.
+ *
+ * @see FrameData for frame + duration representation
  */
 object WebmDecoderSimple {
     private const val TAG = "Tel2What:WebmDecoder"

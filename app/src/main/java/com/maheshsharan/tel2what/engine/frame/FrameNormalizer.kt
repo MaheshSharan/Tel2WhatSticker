@@ -6,13 +6,26 @@ import android.graphics.Color
 import android.graphics.PorterDuff
 
 /**
- * Normalizes unpredictable arbitrary bitmaps into standard constrained frames.
+ * Normalizes arbitrary bitmaps to WhatsApp's required 512×512 dimensions.
+ *
+ * Handles images of any size or aspect ratio by:
+ * - Scaling to fit within target bounds while preserving aspect ratio
+ * - Adding transparent padding (letterboxing/pillarboxing) to reach exact dimensions
+ * - Maintaining ARGB_8888 color format for transparency support
+ *
+ * WhatsApp requires stickers to be exactly 512×512 pixels. This normalizer
+ * ensures all frames meet that constraint regardless of source dimensions.
  */
 object FrameNormalizer {
 
     /**
-     * Scales an arbitrary Bitmap to fit exactly within the target WhatsApp dimensions
-     * while flawlessly maintaining the aspect ratio. Translucent padding handles the letterboxing.
+     * Normalizes a bitmap to target dimensions with aspect ratio preservation.
+     *
+     * @param source The input bitmap (any size or aspect ratio)
+     * @param targetWidth The required output width (typically 512)
+     * @param targetHeight The required output height (typically 512)
+     * @param recycleOriginal Whether to recycle the source bitmap after processing
+     * @return A new bitmap at exact target dimensions, or the original if already correct size
      */
     fun normalizeToSubCanvas(
         source: Bitmap,

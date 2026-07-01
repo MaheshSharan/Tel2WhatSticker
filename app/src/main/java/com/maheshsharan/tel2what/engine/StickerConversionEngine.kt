@@ -14,6 +14,23 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.io.File
 
+/**
+ * Master orchestrator for Telegram sticker conversion to WhatsApp format.
+ *
+ * Routes input files through appropriate decoders and encoders:
+ * - Static images (PNG, WEBP) → Direct WebP conversion
+ * - TGS files (Lottie JSON) → Lottie rendering → Animated WebP
+ * - WEBM files (VP8/VP9 video) → MediaCodec decode → Animated WebP
+ * - Mixed packs → Static-to-animated wrapping (1-frame animated WebP)
+ *
+ * Concurrency control prevents OOM and thermal throttling:
+ * - Static conversions: 4 parallel (lightweight)
+ * - Animated conversions: 1 at a time (memory + CPU intensive)
+ *
+ * The engine automatically applies WhatsApp constraints via adaptive
+ * compression loops (quality reduction + FPS decimation) to meet the
+ * 500KB size limit for animated stickers.
+ */
 class StickerConversionEngine(private val context: Context) {
 
     private val staticConverter = StaticStickerConverter()

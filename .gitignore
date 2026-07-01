@@ -27,3 +27,4 @@ release-key.jks
 app/build/outputs/apk/release/*.apk
 app/build/outputs/apk/release/*.apk.idsig
 RELEASE_PROCESS.md
+.claude/*

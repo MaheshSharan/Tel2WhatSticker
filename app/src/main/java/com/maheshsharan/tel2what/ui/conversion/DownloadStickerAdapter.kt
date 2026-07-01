@@ -49,6 +49,7 @@ class DownloadStickerAdapter : RecyclerView.Adapter<DownloadStickerAdapter.Stick
                     txtStatus.text = "Downloading"
                     txtStatus.setTextColor(itemView.context.getColor(android.R.color.white))
                     imgSticker.setImageDrawable(null)
+                    imgSticker.contentDescription = "Sticker downloading"
                 }
                 "CONVERTING" -> {
                     layoutStatus.visibility = View.VISIBLE
@@ -56,6 +57,7 @@ class DownloadStickerAdapter : RecyclerView.Adapter<DownloadStickerAdapter.Stick
                     txtStatus.text = "Converting"
                     txtStatus.setTextColor(itemView.context.getColor(android.R.color.white))
                     imgSticker.setImageDrawable(null)
+                    imgSticker.contentDescription = "Sticker converting"
                 }
                 "STOPPED" -> {
                     layoutStatus.visibility = View.VISIBLE
@@ -63,6 +65,7 @@ class DownloadStickerAdapter : RecyclerView.Adapter<DownloadStickerAdapter.Stick
                     txtStatus.text = "Stopped"
                     txtStatus.setTextColor(itemView.context.getColor(android.R.color.holo_orange_light))
                     imgSticker.setImageDrawable(null)
+                    imgSticker.contentDescription = "Sticker download stopped"
                 }
                 "READY" -> {
                     layoutStatus.visibility = View.GONE
@@ -71,12 +74,14 @@ class DownloadStickerAdapter : RecyclerView.Adapter<DownloadStickerAdapter.Stick
                             .load(File(sticker.imageFile))
                             .into(imgSticker)
                     }
+                    imgSticker.contentDescription = sticker.accessibilityText
                 }
                 "FAILED" -> {
                     layoutStatus.visibility = View.VISIBLE
                     progressSticker.visibility = View.GONE
                     txtStatus.text = "Failed"
                     txtStatus.setTextColor(itemView.context.getColor(android.R.color.holo_red_light))
+                    imgSticker.contentDescription = "Sticker download failed"
                 }
             }
         }

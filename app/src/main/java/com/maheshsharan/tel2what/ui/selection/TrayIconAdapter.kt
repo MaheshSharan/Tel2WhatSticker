@@ -59,6 +59,8 @@ class TrayIconAdapter(
                 .load(File(entity.imageFile))
                 .into(imgTrayIcon)
 
+            imgTrayIcon.contentDescription = entity.accessibilityText
+
             if (isSelected) {
                 cardTrayIcon.strokeColor = colorPrimary
             } else {

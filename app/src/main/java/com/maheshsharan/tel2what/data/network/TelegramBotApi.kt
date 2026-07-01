@@ -13,8 +13,7 @@ import org.json.JSONObject
 
 class TelegramBotApi {
 
-    // Hardcoded bot token (replace with your own if building from source)
-    private val botToken = "8222863145:AAFBPD95I9qNsKXaxhmiT0lMOxqMecbwdi4"
+    private val botToken = com.maheshsharan.tel2what.BuildConfig.TELEGRAM_BOT_TOKEN
     private val client = OkHttpClient()
 
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
