@@ -137,4 +137,5 @@ dependencies {
     implementation("com.airbnb.android:lottie:6.0.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.12.1")
 }
