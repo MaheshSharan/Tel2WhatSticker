@@ -136,7 +136,8 @@ class ManualUploadViewModel(
                         imageFile = item.finalPath,
                         emojis = "😀",
                         accessibilityText = "Sticker",
-                        status = "READY"
+                        status = "READY",
+                        isAnimated = false
                     )
                 }
                 repository.insertStickers(entities)

@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import com.maheshsharan.tel2what.service.StickerConversionService
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -74,6 +75,9 @@ class ConversionViewModel(
         _stickers.value = emptyList()
         overallStartTimeMillis = System.currentTimeMillis()
         _progressData.value = ConversionProgress()
+
+        // Start background service
+        StickerConversionService.start(context, packTitle)
 
         viewModelScope.launch {
             Log.i(TAG, "Conversion:fetchMetadata start pack=$packName")
@@ -133,6 +137,7 @@ class ConversionViewModel(
                     isError = true,
                     errorMessage = result.exceptionOrNull()?.message ?: "Failed to fetch pack details."
                 )
+                StickerConversionService.stop(context)
             }
         }
     }
@@ -167,7 +172,8 @@ class ConversionViewModel(
                 emojis = it.emoji ?: "😀",
                 accessibilityText = "Sticker",
                 status = "DOWNLOADING",
-                isSelected = false
+                isSelected = false,
+                isAnimated = it.isAnimated || it.isVideo
             )
         }
 
@@ -318,10 +324,14 @@ class ConversionViewModel(
             val dbFailed = dbStickers.count { it.status == "FAILED" }
             Log.i(TAG, "Conversion:batchDBCheckpoint pack=$currentPackName total=${dbStickers.size} ready=$dbReady failed=$dbFailed")
 
+            val isAllFinished = currentIndex >= allTelegramStickers.size
             _progressData.value = _progressData.value.copy(
                 isBatchFinished = true,
-                isAllFinished = currentIndex >= allTelegramStickers.size
+                isAllFinished = isAllFinished
             )
+            if (isAllFinished) {
+                StickerConversionService.stop(context)
+            }
         }
     }
 
@@ -400,12 +410,17 @@ class ConversionViewModel(
             speedStickersPerSec = speed,
             etaSeconds = etaSeconds
         )
+
+        StickerConversionService.updateProgress(context, overallDone, overallTotal, currentPackTitle)
     }
 
     fun stopConversion() {
         Log.i(TAG, "Conversion:stopConversion - User requested stop")
         isStopped = true
         
+        // Stop background service
+        StickerConversionService.stop(context)
+
         // Mark all DOWNLOADING and CONVERTING stickers as STOPPED
         val currentList = _stickers.value.toMutableList()
         currentList.forEachIndexed { index, sticker ->
@@ -433,6 +448,7 @@ class ConversionViewModel(
     override fun onCleared() {
         super.onCleared()
         Log.i(TAG, "Conversion:onCleared - Cancelling all conversion jobs")
+        StickerConversionService.stop(context)
         // Cancel all coroutines when ViewModel is destroyed (user navigates away)
         // viewModelScope automatically cancels all child coroutines
     }

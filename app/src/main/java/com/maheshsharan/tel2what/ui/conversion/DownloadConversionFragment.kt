@@ -1,5 +1,9 @@
 package com.maheshsharan.tel2what.ui.conversion
 
+import android.os.Build
+import android.content.pm.PackageManager
+import androidx.core.content.ContextCompat
+import androidx.activity.result.contract.ActivityResultContracts
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -23,14 +27,34 @@ class DownloadConversionFragment : Fragment(R.layout.fragment_download_conversio
     private lateinit var viewModel: ConversionViewModel
     private lateinit var adapter: DownloadStickerAdapter
 
+    private val requestNotificationPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            android.util.Log.i("Tel2What", "Notification permission granted")
+        } else {
+            android.util.Log.w("Tel2What", "Notification permission denied")
+        }
+    }
+
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    android.Manifest.permission.POST_NOTIFICATIONS
+                ) != PackageManager.PERMISSION_GRANTED
+            ) {
+                requestNotificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
         
         // Setup ViewModel
         val database = AppDatabase.getDatabase(requireContext())
         val repository = StickerRepository(database.stickerDao(), TelegramBotApi(), FileDownloader())
         val factory = ConversionViewModelFactory(repository, requireContext())
-        viewModel = ViewModelProvider(this, factory)[ConversionViewModel::class.java]
+        viewModel = ViewModelProvider(requireActivity(), factory)[ConversionViewModel::class.java]
 
         val btnBack: ImageView = view.findViewById(R.id.btnBack)
         val btnContinue: Button = view.findViewById(R.id.btnContinue)

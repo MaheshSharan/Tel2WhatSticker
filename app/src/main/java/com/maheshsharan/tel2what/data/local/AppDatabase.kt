@@ -10,7 +10,7 @@ import com.maheshsharan.tel2what.data.local.dao.StickerDao
 import com.maheshsharan.tel2what.data.local.entity.StickerEntity
 import com.maheshsharan.tel2what.data.local.entity.StickerPackEntity
 
-@Database(entities = [StickerPackEntity::class, StickerEntity::class], version = 2, exportSchema = false)
+@Database(entities = [StickerPackEntity::class, StickerEntity::class], version = 3, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun stickerDao(): StickerDao
 
@@ -24,6 +24,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE stickers ADD COLUMN isAnimated INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
         fun getDatabase(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -31,7 +37,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "tel2what_database"
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance
                 instance

@@ -4,7 +4,7 @@ import java.io.FileInputStream
 plugins {
     id("com.android.application")
     kotlin("android")
-    id("com.google.devtools.ksp") version "1.9.22-1.0.16"
+    id("com.google.devtools.ksp") version "2.0.21-1.0.25"
     id("io.gitlab.arturbosch.detekt") version "1.23.1"
 }
 
