@@ -10,3 +10,5 @@
 # Binary files should be left untouched
 *.jar           binary
 
+# Ignore libwebp from GitHub language stats (mark as vendored)
+app/src/main/cpp/libwebp/** linguist-vendored
