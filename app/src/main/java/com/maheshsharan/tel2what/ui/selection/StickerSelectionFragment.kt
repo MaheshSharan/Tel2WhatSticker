@@ -63,13 +63,36 @@ class StickerSelectionFragment : Fragment(R.layout.fragment_sticker_selection) {
                 txtSelectionCount.text = "$count / 30 selected"
                 btnContinue.text = "Continue ($count)"
                 btnContinue.isEnabled = count in 3..30
+                btnSelectAll.text = if (count > 0) "Deselect All" else "Select All"
+            }
+        }
+
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewModel.events.collect { event ->
+                when (event) {
+                    is SelectionEvent.ShowMixedPackPrompt -> {
+                        val message = if (event.targetIsAnimated) {
+                            "Selecting this animated sticker will deselect all currently selected static stickers. Proceed?"
+                        } else {
+                            "Selecting this static sticker will deselect all currently selected animated stickers. Proceed?"
+                        }
+                        com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext())
+                            .setTitle("Select one category only")
+                            .setMessage(message)
+                            .setPositiveButton("Yes") { _, _ ->
+                                viewModel.forceToggleSelection(event.stickerId, event.targetIsAnimated)
+                            }
+                            .setNegativeButton("No", null)
+                            .show()
+                    }
+                }
             }
         }
 
         viewModel.loadStickers(packName)
 
         btnSelectAll.setOnClickListener {
-            viewModel.selectAllAvailable()
+            viewModel.toggleSelectAllOrNone()
         }
 
         btnBack.setOnClickListener {

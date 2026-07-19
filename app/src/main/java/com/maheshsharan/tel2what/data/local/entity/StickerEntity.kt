@@ -24,5 +24,6 @@ data class StickerEntity(
     val emojis: String, // Comma-separated emojis
     val accessibilityText: String,
     val status: String, // DOWNLOADING, CONVERTING, READY, FAILED
-    val isSelected: Boolean = false
+    val isSelected: Boolean = false,
+    val isAnimated: Boolean = false
 )
