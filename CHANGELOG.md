@@ -5,6 +5,19 @@ All notable changes to Tel2What - Telegram to WhatsApp Sticker Converter will be
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-07-19
+
+### Added
+- Background conversion service (`StickerConversionService`) with live notification progress.
+- Single-category pack enforcement (preventing mixed static/animated stickers) and Room migration.
+- Custom `ShimmerDrawable` skeleton placeholder for instant preview loading.
+- Root-level Telegram pack thumbnail parsing and fallback support.
+- Release signing configuration from properties and custom APK output naming.
+- Robolectric testing framework and updated CI pipeline workflow.
+
+### Fixed
+- App relaunching from scratch on tapping progress notification (configured singleTop/launch flags).
+
 ## [1.1.3] - 2026-07-01
 
 ### Added
