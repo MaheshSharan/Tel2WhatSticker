@@ -20,6 +20,9 @@ import com.maheshsharan.tel2what.data.local.AppDatabase
 import com.maheshsharan.tel2what.data.network.FileDownloader
 import com.maheshsharan.tel2what.data.network.TelegramBotApi
 import com.maheshsharan.tel2what.data.repository.StickerRepository
+import com.maheshsharan.tel2what.data.network.model.previewFileId
+import com.maheshsharan.tel2what.ui.custom.ShimmerDrawable
+import android.graphics.Color
 import kotlinx.coroutines.launch
 
 class TelegramImportFragment : Fragment(R.layout.fragment_telegram_import) {
@@ -43,6 +46,7 @@ class TelegramImportFragment : Fragment(R.layout.fragment_telegram_import) {
         val progressLoading: android.widget.ProgressBar = view.findViewById(R.id.progressLoading)
         
         val cardPreview: MaterialCardView = view.findViewById(R.id.cardPreview)
+        val imgPreviewThumb: ImageView = view.findViewById(R.id.imgPreviewThumb)
         val txtPackTitle: TextView = view.findViewById(R.id.txtPackTitle)
         val txtPackStickerCount: TextView = view.findViewById(R.id.txtPackStickerCount)
 
@@ -118,6 +122,27 @@ class TelegramImportFragment : Fragment(R.layout.fragment_telegram_import) {
                         txtPackTitle.text = state.stickerSet.title
                         txtPackStickerCount.text = "${state.stickerSet.stickers.size} Stickers total"
 
+                        val shimmer = createShimmerPlaceholder()
+                        imgPreviewThumb.setImageDrawable(shimmer)
+
+                        val targetFileId = state.stickerSet.previewFileId
+                        if (targetFileId != null) {
+                            viewModel.resolveTelegramFileUrl(targetFileId).observe(viewLifecycleOwner) { resolvedUrl ->
+                                if (!resolvedUrl.isNullOrEmpty()) {
+                                    com.bumptech.glide.Glide.with(this@TelegramImportFragment)
+                                        .load(resolvedUrl)
+                                        .placeholder(shimmer)
+                                        .error(android.R.drawable.ic_menu_gallery)
+                                        .centerCrop()
+                                        .into(imgPreviewThumb)
+                                } else {
+                                    imgPreviewThumb.setImageResource(android.R.drawable.ic_menu_gallery)
+                                }
+                            }
+                        } else {
+                            imgPreviewThumb.setImageResource(android.R.drawable.ic_menu_gallery)
+                        }
+
                         btnAction.setOnClickListener {
                             val bundle = Bundle().apply {
                                 putString("packName", state.stickerSet.name)
@@ -134,6 +159,20 @@ class TelegramImportFragment : Fragment(R.layout.fragment_telegram_import) {
                         txtPackTitle.text = state.packTitle
                         txtPackStickerCount.text = "${state.stickerCount} Stickers saved"
 
+                        val shimmer = createShimmerPlaceholder()
+                        imgPreviewThumb.setImageDrawable(shimmer)
+
+                        if (state.trayImageFile.isNotEmpty()) {
+                            com.bumptech.glide.Glide.with(this@TelegramImportFragment)
+                                .load(java.io.File(state.trayImageFile))
+                                .placeholder(shimmer)
+                                .error(android.R.drawable.ic_menu_gallery)
+                                .centerCrop()
+                                .into(imgPreviewThumb)
+                        } else {
+                            imgPreviewThumb.setImageResource(android.R.drawable.ic_menu_gallery)
+                        }
+
                         btnAction.setOnClickListener {
                             val bundle = Bundle().apply {
                                 putString("packName", state.packId)
@@ -148,6 +187,16 @@ class TelegramImportFragment : Fragment(R.layout.fragment_telegram_import) {
                     }
                 }
             }
+        }
+    }
+
+    private fun createShimmerPlaceholder(): ShimmerDrawable {
+        val isDark = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val base = if (isDark) Color.parseColor("#1C1C1C") else Color.parseColor("#E0E0E0")
+        val highlight = if (isDark) Color.parseColor("#2D2D2D") else Color.parseColor("#F5F5F5")
+        return ShimmerDrawable().apply {
+            setColors(base, highlight)
+            start()
         }
     }
 }

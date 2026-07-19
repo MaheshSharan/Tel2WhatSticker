@@ -17,7 +17,8 @@ sealed class ImportState {
     data class AlreadyDownloaded(
         val packId: String,
         val packTitle: String,
-        val stickerCount: Int
+        val stickerCount: Int,
+        val trayImageFile: String
     ) : ImportState()
     data class Error(val message: String) : ImportState()
 }
@@ -26,6 +27,19 @@ class TelegramImportViewModel(private val repository: StickerRepository) : ViewM
 
     private val _importState = MutableStateFlow<ImportState>(ImportState.Idle)
     val importState: StateFlow<ImportState> = _importState.asStateFlow()
+
+    fun resolveTelegramFileUrl(fileId: String): androidx.lifecycle.LiveData<String?> {
+        val liveData = androidx.lifecycle.MutableLiveData<String?>()
+        viewModelScope.launch {
+            val path = repository.fetchFilePath(fileId)
+            if (path != null) {
+                liveData.value = repository.getDownloadUrl(path)
+            } else {
+                liveData.value = null
+            }
+        }
+        return liveData
+    }
 
     fun fetchPackMetadata(url: String) {
         val packName = extractPackName(url)
@@ -44,7 +58,8 @@ class TelegramImportViewModel(private val repository: StickerRepository) : ViewM
                 _importState.value = ImportState.AlreadyDownloaded(
                     packId = packName,
                     packTitle = existingPack.name,
-                    stickerCount = packSize
+                    stickerCount = packSize,
+                    trayImageFile = existingPack.trayImageFile
                 )
                 return@launch
             }
